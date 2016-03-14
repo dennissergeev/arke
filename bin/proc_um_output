@@ -1,0 +1,110 @@
+#!python3
+# -*- coding: utf-8 -*-
+import argparse
+import os
+
+import iris
+
+import umtools.irismode as umt
+from umtools import utils
+
+DESCR = """
+Postprocess Unified Model output :
+'unstagger' cubes by interpolating onto a common grid, and
+unrotate horizontal wind components, if necessary
+"""
+
+parser = argparse.ArgumentParser(os.path.basename(__file__),
+                                 description=DESCR,
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-f", "--input_file", nargs='?', required=True, help="File name")
+parser.add_argument("--unrotatewind", action='store_true', default=False,
+                    help="If the file contains u- and v-wind components\n"
+                         "on a rotated pole coordinate system,\n"
+                         "rotate them to a 'normal' coordinate system")
+parser.add_argument("--cube_src_name", default="surface_altitude", type=str,
+                    help="Name of a cube, which grid\n"
+                         "will be averaged and used to interpolate all other cubes")
+parser.add_argument("--dim_ave", default="xy", type=str,
+                    help="Dimensions that will be averaged")
+parser.add_argument("--fmt_out", default=".nc", type=str,
+                    help="Suffix and format of file where to save results (pp/nc)")
+parser.add_argument("--verbose", default=0, type=int, choices=range(0,2),
+                    help="Status messages\n"
+                         "none: 0\n"
+                         "more: 1\n"
+                         " all: 2\n")
+parser.add_argument("--testout", default=False, type=bool,
+                    help="Open the resulting file once again\n"
+                         "to test the output")
+
+def proc_um_file(input_fname, cube_name_and_axes, extrapolation_mode='linear', 
+                 unrotatewind=True, uwind_name='x_wind', vwind_name='y_wind',
+                 replacewind=False, verbose=0):
+
+    cubelist = iris.load(input_fname)
+    umt.replace_unknown_names(cubelist)
+
+    if verbose > 1:
+        print('=== Input CubeList ===')
+        print(input_fname)
+        print(cubelist)
+        print('======================')
+
+    umt.interp_cubes_to_points(cubelist, cube_name_and_axes, verbose)
+
+    if unrotatewind:
+        umt.unrotate_wind(cubelist, uwind_name, vwind_name,
+                          replace=replacewind, verbose=verbose)
+
+    if verbose > 1:
+        print('=== Output CubeList ===')
+        print(cubelist)
+        print('Saving...')
+    return cubelist
+
+
+def save_cubelist(cubelist, input_fname, fmt_out='.nc', save_dir='processed', verbose=0):
+    outdir = os.path.join(os.path.dirname(input_fname), save_dir)
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
+    fout = os.path.join(outdir, '-'.join(os.path.basename(input_fname).split('.')) + '-proc' + fmt_out)
+    iris.save(cubelist, fout)
+    if verbose > 0:
+        print('saved to file')
+        print(fout)
+        print('=======================')
+
+    return fout
+
+
+if __name__ == '__main__':
+    args = parser.parse_args()
+
+    cube_src_name = args.cube_src_name
+    dim_ave = args.dim_ave
+
+    cube_name_and_axes = dict(name=cube_src_name, dim_ave=dim_ave)
+
+    if args.unrotatewind:
+        unrotatewind = args.unrotatewind
+        replacewind = True
+    else:
+        unrotatewind = replacewind = False
+
+    verbose = args.verbose
+
+    # Read the given data file
+    fn_in = args.input_file
+    cubelist = proc_um_file(fn_in, cube_name_and_axes=cube_name_and_axes,
+                            unrotatewind=unrotatewind, replacewind=replacewind, verbose=verbose)
+
+    # Save
+    fmt_out = args.fmt_out
+    fn_out = save_cubelist(cubelist, fn_in, fmt_out=fmt_out, verbose=verbose)
+
+    if args.testout:
+        print('================================')
+        print('Open the created file for a test')
+        f = iris.load(fn_out)
+        print(f)
