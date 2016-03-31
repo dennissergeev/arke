@@ -7,6 +7,11 @@ import iris
 
 iris.FUTURE.netcdf_no_unlimited = True
 
+def nearest_tval(cube, dt):
+    timevar = cube.coord('time')
+    itime = timevar.nearest_neighbour_index(timevar.units.date2num(dt))
+    return timevar.units.num2date(timevar.points[itime])
+
 class grdstep(object):
     def __init__(self, key):
         self.key = key
