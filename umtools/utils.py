@@ -4,8 +4,39 @@ import time
 
 import cf_units
 import iris
+import numpy as np
 
 iris.FUTURE.netcdf_no_unlimited = True
+
+def nearest_xy_grid_2d_index(cube, point_lon, point_lat):
+    lons, lats = unrotate_xy_grids(cube)
+    dist = np.sqrt((lons - point_lon)**2 + (lats - point_lat)**2)
+    iy, ix = np.unravel_index(np.argmin(dist), lons.shape)
+
+    return (iy, ix)
+
+
+def mask_cube_outside_circle(cube, radius, point_lon, point_lat,\
+                             dx=1, dy=None, return_copy=True, return_mask=True):
+    dy = dx if dy is None else dy
+    iy, ix = nearest_xy_grid_2d_index(cube, point_lon, point_lat)
+    ny, nx = cube.shape
+    x, y = np.ogrid[-iy:ny-iy, -ix:nx-ix]
+    xdist, ydist = x*dx, y*dy
+    mask = xdist*xdist + ydist*ydist > radius*radius
+
+    if return_copy:
+        cp_cube = cube.copy()
+        cp_cube.data = np.ma.masked_where(mask, cp_cube.data)
+        if return_mask:
+            return cp_cube, mask
+        else:
+            return cp_cube
+    else:
+        cube.data = np.ma.masked_where(mask, cube.data)
+        if return_mask:
+            return mask
+
 
 def unrotate_xy_grids(cube):
     """
