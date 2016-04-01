@@ -7,6 +7,40 @@ import iris
 
 iris.FUTURE.netcdf_no_unlimited = True
 
+def unrotate_xy_grids(cube):
+    """
+    Convert rotated-pole lons and lats to unrotated ones using X and Y coordinate for a given cube.
+    Unites get_xy_grids() and unrotate_pole() functions.
+
+    Args:
+
+        * cube - The cube with rotated coordinate system for which to generate 2D X and Y unrotated coordinates.
+
+    Example::
+
+        lon, lat = unrotate_xy_grids(cube)
+
+    """
+    x, y = iris.analysis.cartography.get_xy_grids(cube)
+
+    cs = cube.coord_system('CoordSystem')
+    if isinstance(cs, iris.coord_systems.RotatedGeogCS):
+        nplon = cube.coord_system().grid_north_pole_longitude
+        nplat = cube.coord_system().grid_north_pole_latitude
+        x, y = iris.analysis.cartography.unrotate_pole(x, y, nplon, nplat)
+    else:
+        # no rotation needed
+        pass
+
+    return (x, y)
+
+
+def nearest_plevel(cube, pval):
+    pcoord = cube.coord('pressure')
+    i = pcoord.nearest_neighbour_index(pval)
+    return pcoord.points[i]
+
+
 def nearest_tval(cube, dt):
     timevar = cube.coord('time')
     itime = timevar.nearest_neighbour_index(timevar.units.date2num(dt))
