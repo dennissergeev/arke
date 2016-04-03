@@ -3,8 +3,10 @@ import os
 import time
 
 import cf_units
+import functools
 import iris
 import numpy as np
+import operator
 
 iris.FUTURE.netcdf_no_unlimited = True
 
@@ -16,24 +18,33 @@ def nearest_xy_grid_2d_index(cube, point_lon, point_lat):
     return (iy, ix)
 
 
-def mask_cube_outside_circle(cube, radius, point_lon, point_lat,\
-                             dx=1, dy=None, return_copy=True, return_mask=True):
+def mask_cube_outside_circle_xy(cube, radius, point_lon, point_lat,\
+                                dx=1, dy=None, return_copy=True, return_mask=True):
     dy = dx if dy is None else dy
     iy, ix = nearest_xy_grid_2d_index(cube, point_lon, point_lat)
-    ny, nx = cube.shape
+    xcoord, _ = iris.analysis.cartography.get_xy_grids(cube)
+    ny, nx = xcoord.shape
     x, y = np.ogrid[-iy:ny-iy, -ix:nx-ix]
     xdist, ydist = x*dx, y*dy
     mask = xdist*xdist + ydist*ydist > radius*radius
+    shp = cube.shape
+    if mask.shape != shp:
+        shp = list(shp)
+        [shp.remove(n) for n in (nx, ny)]
+        remainder = functools.reduce(operator.mul, shp)
+        mask = mask.repeat(remainder).reshape((ny, nx, *shp))
+        mask = np.rollaxis(np.rollaxis(mask,0,mask.ndim),0,mask.ndim)
+    masked_data = np.ma.masked_where(mask, cube.data)
 
     if return_copy:
         cp_cube = cube.copy()
-        cp_cube.data = np.ma.masked_where(mask, cp_cube.data)
+        cp_cube.data = masked_data
         if return_mask:
             return cp_cube, mask
         else:
             return cp_cube
     else:
-        cube.data = np.ma.masked_where(mask, cube.data)
+        cube.data = masked_data
         if return_mask:
             return mask
 
