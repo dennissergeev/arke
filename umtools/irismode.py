@@ -255,6 +255,14 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     else:
         return interp_array
 
+def unrotate_uv(u, v, target_cs=None, remove_aux_xy=True):
+    if target_cs is None:
+        target_cs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
+    uv = iris.analysis.cartography.rotate_winds(u, v, newcs)
+    if remove_aux_xy:
+        [cube.remove_coord(i) for i in ('projection_x_coordinate',
+                                        'projection_y_coordinate') for cube in uv]
+    return uv
 
 def unrotate_wind(cubelist,
                   uwind_name='x_wind', vwind_name='y_wind',
