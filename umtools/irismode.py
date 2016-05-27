@@ -294,3 +294,26 @@ def unrotate_wind(cubelist,
 
 def convert_unit_str(str1, str2):
     return cf_units.Unit(str1).convert(1, cf_units.Unit(str2))
+
+unnecessary_coords = ('forecast_period', )
+def extract_as_single_cube(cubelist, name):
+    try:
+        cube = cubelist.extract_strict(name)
+    except iris.exceptions.ConstraintMismatchError:
+        cube = None
+        cubes = cubelist.extract(name)
+        for icoord in unnecessary_coords:
+            conc = cubes.concatenate()
+            if len(conc) == 1:
+                cube = conc[0]
+                break
+            else:
+                for icube in cubes:
+                    icube.remove_coord(icoord)
+                conc = cubes.concatenate()
+                if len(conc) == 1:
+                    cube = conc[0]
+                    break
+        if cube is None:
+            raise ValueError('Unable to concatenate')
+        return cube
