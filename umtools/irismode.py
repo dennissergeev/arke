@@ -316,4 +316,4 @@ def extract_as_single_cube(cubelist, name):
                     break
         if cube is None:
             raise ValueError('Unable to concatenate')
-        return cube
+    return cube
