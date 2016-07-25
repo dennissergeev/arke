@@ -317,3 +317,6 @@ def extract_as_single_cube(cubelist, name):
         if cube is None:
             raise ValueError('Unable to concatenate')
     return cube
+
+def get_cube_datetimes(cube):
+    return cube.coord('time').units.num2date(cube.coord('time').points)
