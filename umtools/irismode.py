@@ -11,6 +11,20 @@ import iris
 
 from . import utils
 
+
+def add_coord_system(src_cube, cs=None):
+    if cs is None:
+        cs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
+    cube = src_cube.copy()
+    for ax in ('x', 'y'):
+        icoord = cube.coord(axis=ax)
+        idim = cube.coord_dims(icoord)
+        cube.remove_coord(icoord)
+        icoord.coord_system = cs
+        cube.add_dim_coord(icoord, idim)
+    return cube
+
+
 def interp_cubes_to_points(cubelist, cube_name_and_axes,
                               verbose=0, extrapolation_mode='linear'):
     """ """
