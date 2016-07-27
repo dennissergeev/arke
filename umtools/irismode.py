@@ -155,7 +155,7 @@ def get_cube(cubelist, cube_name, lazy=True):
 def get_model_real_coords(vrbl, dims='tzyx'):
     """ Retrieve 'physical' coordinates of """
     pref_coords = dict(x=('x', 'grid_longitude', 'longitude'),
-                       y=('y', 'grid_latitude', 'latitude'), 
+                       y=('y', 'grid_latitude', 'latitude'),
                        z=('height', 'level_height', 'pressure', 'atmosphere_hybrid_height_coordinate'),
                        t=('time'))
     model_coords = []
@@ -164,9 +164,14 @@ def get_model_real_coords(vrbl, dims='tzyx'):
         if len(idim) > 1:
             for icoord in idim:
                 if icoord.name() in pref_coords[iax]:
+                    if all(icoord.points > 180.0):
+                        icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
         elif len(idim) == 1:
             model_coords.append(idim[0])
+            if all(idim[0].points > 180.0):
+                idim[0].points = idim[0].points - 360.0
+
 
     if len(vrbl.shape) != len(model_coords):
         print('WARNING! Number of coordinates does not match the input variable shape!')
