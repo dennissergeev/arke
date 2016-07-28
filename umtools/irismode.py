@@ -4,6 +4,7 @@ from datetime import datetime
 import glob
 import numpy as np
 import os
+import sys
 import scipy.interpolate as scinter
 
 import cf_units
@@ -164,13 +165,13 @@ def get_model_real_coords(vrbl, dims='tzyx'):
         if len(idim) > 1:
             for icoord in idim:
                 if icoord.name() in pref_coords[iax]:
-                    if all(icoord.points > 180.0):
+                    if iax in ('xy') and all(icoord.points > 180.0):
                         icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
         elif len(idim) == 1:
-            model_coords.append(idim[0])
-            if all(idim[0].points > 180.0):
+            if iax in ('xy') and all(idim[0].points > 180.0):
                 idim[0].points = idim[0].points - 360.0
+            model_coords.append(idim[0])
 
 
     if len(vrbl.shape) != len(model_coords):
@@ -202,14 +203,14 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         for iax in shift:
             obs_coord_dict[iax] += shift[iax]
 
-    if isinstance(datacontainer, list) or isinstance(datacontainer, tuple):
+    if isinstance(datacontainer, (list, tuple)):
         ivar = get_cube(datacontainer[0], datacontainer[1])
     elif isinstance(datacontainer, dict):
         ivar = get_cube(datacontainer['dataset'], datacontainer['varname'])
     elif isinstance(datacontainer, iris.cube.Cube):
         ivar = datacontainer
     elif isinstance(datacontainer, np.ndarray):
-        if model_coords is None or rot_ll is None:
+        if model_coords is None or not rot_ll:
             raise ValueError('Model coords must be passed explicitly if the input data is numpy.ndarray')
         else:
             ivar = datacontainer
@@ -248,9 +249,11 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     for iax in dims:
         obs_coord_interp_arg.append(obs_coord_dict[iax])
     obs_coord_interp_arg = np.vstack(obs_coord_interp_arg).T
-    #print(model_coord_points)
+    #print('-------------------------------------')
+    #print(ivar.coord('time').units.num2date(model_coord_points[0]))
     #print()
-    #print(obs_coord_interp_arg)
+    #print(ivar.coord('time').units.num2date(obs_coord_interp_arg[:, 0]))
+    #print('-------------------------------------')
     interp_array = InterpFun(obs_coord_interp_arg)
 
     if return_cube:
