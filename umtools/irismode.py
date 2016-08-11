@@ -12,6 +12,10 @@ import iris
 
 from . import utils
 
+phys_coords = dict(x=('x', 'grid_longitude', 'longitude'),
+                   y=('y', 'grid_latitude', 'latitude'),
+                   z=('height', 'level_height', 'pressure', 'atmosphere_hybrid_height_coordinate'),
+                   t=('time'))
 
 def add_coord_system(src_cube, cs=None):
     if cs is None:
@@ -155,21 +159,17 @@ def get_cube(cubelist, cube_name, lazy=True):
 
 def get_model_real_coords(vrbl, dims='tzyx'):
     """ Retrieve 'physical' coordinates of """
-    pref_coords = dict(x=('x', 'grid_longitude', 'longitude'),
-                       y=('y', 'grid_latitude', 'latitude'),
-                       z=('height', 'level_height', 'pressure', 'atmosphere_hybrid_height_coordinate'),
-                       t=('time'))
     model_coords = []
     for iax in dims:
         idim = vrbl.coords(axis=iax)
         if len(idim) > 1:
             for icoord in idim:
-                if icoord.name() in pref_coords[iax]:
-                    if iax in ('xy') and all(icoord.points > 180.0):
+                if icoord.name() in phys_coords[iax]:
+                    if iax in 'xy' and all(icoord.points > 180.0):
                         icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
         elif len(idim) == 1:
-            if iax in ('xy') and all(idim[0].points > 180.0):
+            if iax in 'xy' and all(idim[0].points > 180.0):
                 idim[0].points = idim[0].points - 360.0
             model_coords.append(idim[0])
 
@@ -177,6 +177,26 @@ def get_model_real_coords(vrbl, dims='tzyx'):
     if len(vrbl.shape) != len(model_coords):
         print('WARNING! Number of coordinates does not match the input variable shape!')
     return model_coords
+
+
+def get_phys_coord(vrbl, axis, subtract360=True):
+    """ Retrieve 'physical' coordinates of """
+    coord = None
+    for iax in dims:
+        idim = vrbl.coords(axis=iax)
+        if len(idim) > 1:
+            for icoord in idim:
+                if icoord.name() in phys_coords[iax]:
+                    if iax in 'xy' and all(icoord.points > 180.0) and subtract360:
+                        icoord.points = icoord.points - 360.0
+                        coord = icoord
+        elif len(idim) == 1:
+            if iax in 'xy' and all(idim[0].points > 180.0) and subtract360:
+                idim[0].points = idim[0].points - 360.0
+            if idim[0].name() in phys_coords[axis]:
+                coord = idim[0]
+
+    return coord
 
 
 def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
