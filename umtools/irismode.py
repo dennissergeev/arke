@@ -182,19 +182,18 @@ def get_model_real_coords(vrbl, dims='tzyx'):
 def get_phys_coord(vrbl, axis, subtract360=True):
     """ Retrieve 'physical' coordinates of """
     coord = None
-    for iax in dims:
-        idim = vrbl.coords(axis=iax)
-        if len(idim) > 1:
-            for icoord in idim:
-                if icoord.name() in phys_coords[iax]:
-                    if iax in 'xy' and all(icoord.points > 180.0) and subtract360:
-                        icoord.points = icoord.points - 360.0
-                        coord = icoord
-        elif len(idim) == 1:
-            if iax in 'xy' and all(idim[0].points > 180.0) and subtract360:
-                idim[0].points = idim[0].points - 360.0
-            if idim[0].name() in phys_coords[axis]:
-                coord = idim[0]
+    idim = vrbl.coords(axis=axis)
+    if len(idim) > 1:
+        for icoord in idim:
+            if icoord.name() in phys_coords[axis]:
+                if axis in 'xy' and all(icoord.points > 180.0) and subtract360:
+                    icoord.points = icoord.points - 360.0
+                    coord = icoord
+    elif len(idim) == 1:
+        if axis in 'xy' and all(idim[0].points > 180.0) and subtract360:
+            idim[0].points = idim[0].points - 360.0
+        if idim[0].name() in phys_coords[axis]:
+            coord = idim[0]
 
     return coord
 
