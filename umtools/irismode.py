@@ -181,21 +181,16 @@ def get_model_real_coords(vrbl, dims='tzyx'):
 
 def get_phys_coord(vrbl, axis, subtract360=True):
     """ Retrieve 'physical' coordinates of """
-    coord = None
-    idim = vrbl.coords(axis=axis)
-    if len(idim) > 1:
-        for icoord in idim:
-            if icoord.name() in phys_coords[axis]:
-                if axis in 'xy' and all(icoord.points > 180.0) and subtract360:
-                    icoord.points = icoord.points - 360.0
-                    coord = icoord
-    elif len(idim) == 1:
-        if axis in 'xy' and all(idim[0].points > 180.0) and subtract360:
-            idim[0].points = idim[0].points - 360.0
-        if idim[0].name() in phys_coords[axis]:
-            coord = idim[0]
+    result = None
+    coords = vrbl.coords(axis=axis)
+    for icoord in coords:
+        if icoord.name() in phys_coords[axis]:
+            if axis in 'xy' and all(icoord.points > 180.0) and subtract360:
+                icoord.points = icoord.points - 360.0
+            result = icoord
+            break
 
-    return coord
+    return result
 
 
 def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
