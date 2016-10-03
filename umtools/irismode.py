@@ -1,21 +1,24 @@
 # -*- coding: utf-8 -*-
+import configparser
 import copy
-from datetime import datetime
 import glob
 import numpy as np
 import os
-import sys
 import scipy.interpolate as scinter
 
 import cf_units
 import iris
+from iris.fileformats.pp import EARTH_RADIUS
 
 from . import utils
 
-phys_coords = dict(x=('x', 'grid_longitude', 'longitude'),
+PHYS_COORDS = dict(x=('x', 'grid_longitude', 'longitude'),
                    y=('y', 'grid_latitude', 'latitude'),
-                   z=('height', 'level_height', 'pressure', 'atmosphere_hybrid_height_coordinate'),
+                   z=('height', 'level_height', 'pressure',
+                      'atmosphere_hybrid_height_coordinate'),
                    t=('time'))
+REDUNDANT_COORDS = ('forecast_period', )
+
 
 def add_coord_system(src_cube, cs=None):
     if cs is None:
@@ -31,14 +34,15 @@ def add_coord_system(src_cube, cs=None):
 
 
 def interp_cubes_to_points(cubelist, cube_name_and_axes,
-                              verbose=0, extrapolation_mode='linear'):
+                           verbose=0, extrapolation_mode='linear'):
     """ """
     src_cube = get_cube(cubelist, cube_name_and_axes['name'])
     pnts = []
     if 'dim_ave' in cube_name_and_axes:
         for iax in cube_name_and_axes['dim_ave']:
             iax_name = src_cube.coord(axis=iax).name()
-            iax_pnts = 0.5 * (src_cube.coord(axis=iax).points[1:] + src_cube.coord(axis=iax).points[:-1])
+            iax_pnts = 0.5 * (src_cube.coord(axis=iax).points[1:] +
+                              src_cube.coord(axis=iax).points[:-1])
             if all(iax_pnts > 180.0):
                 iax_pnts = iax_pnts - 360.0
             pnts.append((iax_name, iax_pnts))
@@ -54,8 +58,9 @@ def interp_cubes_to_points(cubelist, cube_name_and_axes,
     for k, icube in enumerate(cubelist):
         if verbose > 1:
             utils.tic()
-        new_cube = iris.analysis.interpolate.linear(icube, pnts,
-                                                    extrapolation_mode=extrapolation_mode)
+        new_cube = (iris.analysis.
+                    interpolate.linear(icube, pnts,
+                                       extrapolation_mode=extrapolation_mode))
         if verbose > 1:
             print('Interpolation of {} is completed.'.format(new_cube.name()))
             utils.toc()
@@ -63,9 +68,11 @@ def interp_cubes_to_points(cubelist, cube_name_and_axes,
         cubelist[k] = new_cube
 
 
-def load_data(filenames, replace_unknowns=False, default_path='', verbose=False):
+def load_data(filenames,
+              replace_unknowns=False, default_path='', verbose=False):
     if isinstance(filenames, list) or isinstance(filenames, tuple):
-        filenames = tuple([os.path.join(default_path, ifilename) for ifilename in filenames])
+        filenames = tuple([os.path.join(default_path, ifilename)
+                           for ifilename in filenames])
     elif isinstance(filenames, str):
         filenames = sorted(glob.glob(os.path.join(default_path, filenames)))
     else:
@@ -94,45 +101,9 @@ def load_data(filenames, replace_unknowns=False, default_path='', verbose=False)
         return datasets[0]
 
 
-def gather_cube(cubelists, cubenames, add_coord=None,
-                remove_aux_fac=False, remove_fcst_period=False, remove_aux_z=False,
-                time_var_name='time_0'):
-    """ Concatenate cube with some tweaks """
-    cubes = []
-    for icubename in cubenames:
-        cube = []
-        for icubelist in cubelists:
-            icube = get_cube(icubelist, icubename)
-            if isinstance(add_coord, dict):
-                for idim in add_coord:
-                    icube.add_dim_coord(add_coord[idim], int(idim))
-            if remove_aux_fac:
-                for ifactory in icube.aux_factories:
-                    icube.remove_aux_factory(ifactory)
-            if remove_fcst_period:
-                for i_auxcoord in icube.aux_coords:
-                    if i_auxcoord.name() == u'forecast_period':
-                        icube.remove_coord(i_auxcoord)
-            if remove_aux_z:
-                for i_auxcoord in icube.aux_coords:
-                    if i_auxcoord.name() in [u'surface_altitude',
-                                             u'level_height',
-                                             u'atmosphere_hybrid_height_coordinate']:
-                        icube.remove_coord(i_auxcoord)
-            if time_var_name is not None:
-                icube.coord('time').var_name = time_var_name
-
-            cube.append(icube)
-        cube = iris.cube.CubeList(cube)
-        concat = cube.concatenate()
-        assert len(concat) == 1, 'Concatentation incomplete, so far only \n{}'.format(concat)
-        cubes.append(concat[0])
-
-    return cubes
-
-
 def replace_unknown_names(dataset, default_name='unknown'):
-    """ Replace missing names within an `iris.cube.CubeList` by using STASH attribute """
+    """ Replace missing names within an `iris.cube.CubeList`
+        by using STASH attribute """
     for ivar in dataset:
         if default_name in ivar.name().lower():
             try:
@@ -154,7 +125,8 @@ def get_cube(cubelist, cube_name, lazy=True):
         if match:
             return i
     if i is None:
-        raise ValueError('Cube with name {0} not found in {1}'.format(cube_name, cubelist))
+        _msg = 'Cube with name {0} not found in {1}'
+        raise ValueError(_msg.format(cube_name, cubelist))
 
 
 def get_model_real_coords(vrbl, dims='tzyx'):
@@ -164,7 +136,7 @@ def get_model_real_coords(vrbl, dims='tzyx'):
         idim = vrbl.coords(axis=iax)
         if len(idim) > 1:
             for icoord in idim:
-                if icoord.name() in phys_coords[iax]:
+                if icoord.name() in PHYS_COORDS[iax]:
                     if iax in 'xy' and all(icoord.points > 180.0):
                         icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
@@ -173,9 +145,9 @@ def get_model_real_coords(vrbl, dims='tzyx'):
                 idim[0].points = idim[0].points - 360.0
             model_coords.append(idim[0])
 
-
     if len(vrbl.shape) != len(model_coords):
-        print('WARNING! Number of coordinates does not match the input variable shape!')
+        print('WARNING!'
+              'Number of coordinates does not match the input variable shape!')
     return model_coords
 
 
@@ -184,7 +156,7 @@ def get_phys_coord(vrbl, axis, subtract360=True):
     result = None
     coords = vrbl.coords(axis=axis)
     for icoord in coords:
-        if icoord.name() in phys_coords[axis]:
+        if icoord.name() in PHYS_COORDS[axis]:
             if axis in 'xy' and all(icoord.points > 180.0) and subtract360:
                 icoord.points = icoord.points - 360.0
             result = icoord
@@ -194,11 +166,12 @@ def get_phys_coord(vrbl, axis, subtract360=True):
 
 
 def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
-                        obs_time_convert=True, rot_ll=True, shift=None, dims='tzyx',
-                        return_cube=False):
+                        obs_time_convert=True, rot_ll=True, shift=None,
+                        dims='tzyx', return_cube=False):
     if isinstance(obs_coord, tuple):
         if len(dims) != len(obs_coord):
-            raise ValueError('Shape of the obs_coord does not equal to the dims keyword')
+            _msg = 'Shape of the obs_coord does not equal to the dims keyword'
+            raise ValueError(_msg)
         else:
             obs_coord_dict = dict()
             for iax, i_coord in zip(dims, obs_coord):
@@ -208,10 +181,10 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     else:
         raise ValueError('obs_coord can only be a tuple or a dict')
 
-    #print(np.nanmin(obs_coord_dict['x']),np.nanmax(obs_coord_dict['x']))
-    #print(np.nanmin(obs_coord_dict['y']),np.nanmax(obs_coord_dict['y']))
-    #print()
-    #[ii+jj for ii, jj in zip(obs_coord[1:], zyxsh)]
+    # print(np.nanmin(obs_coord_dict['x']),np.nanmax(obs_coord_dict['x']))
+    # print(np.nanmin(obs_coord_dict['y']),np.nanmax(obs_coord_dict['y']))
+    # print()
+    # [ii+jj for ii, jj in zip(obs_coord[1:], zyxsh)]
 
     if isinstance(shift, dict):
         for iax in shift:
@@ -225,7 +198,9 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         ivar = datacontainer
     elif isinstance(datacontainer, np.ndarray):
         if model_coords is None or not rot_ll:
-            raise ValueError('Model coords must be passed explicitly if the input data is numpy.ndarray')
+            _msg = 'Model coords must be passed explicitly'\
+                   ' if the input data is numpy.ndarray'
+            raise ValueError(_msg)
         else:
             ivar = datacontainer
     else:
@@ -235,7 +210,9 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     model_coord_points = [i.points for i in model_coords]
 
     if obs_time_convert and 't' in dims:
-        obs_coord_dict['t'] = model_coords[0].units.date2num(obs_coord_dict['t'])
+        obs_coord_dict['t'] = (model_coords[0].
+                               units.
+                               date2num(obs_coord_dict['t']))
 
     if rot_ll:
         try:
@@ -244,12 +221,13 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         except:
             nplon = model_coords[-1].coord_system.grid_north_pole_longitude
             nplat = model_coords[-1].coord_system.grid_north_pole_latitude
-        obs_coord_dict['x'], obs_coord_dict['y'] = iris.analysis.cartography.rotate_pole(obs_coord_dict['x'], obs_coord_dict['y'],
-                                                                                         nplon, nplat)
-    #print(np.nanmin(obs_coord_dict['x']),np.nanmax(obs_coord_dict['x']))
-    #print(np.nanmin(obs_coord_dict['y']),np.nanmax(obs_coord_dict['y']))
-    #print(ivar.coords(axis='x')[0].points.min(), ivar.coords(axis='x')[0].points.max())
-    #print(ivar.coords(axis='y')[0].points.min(), ivar.coords(axis='y')[0].points.max())
+        obs_coord_dict['x'],
+        obs_coord_dict['y'] = (iris.analysis.cartography.
+                               rotate_pole(obs_coord_dict['x'],
+                                           obs_coord_dict['y'],
+                                           nplon, nplat))
+    # print(np.nanmin(obs_coord_dict['x']),np.nanmax(obs_coord_dict['x']))
+    # print(np.nanmin(obs_coord_dict['y']),np.nanmax(obs_coord_dict['y']))
     if isinstance(ivar, iris.cube.Cube):
         ivar_data = ivar.data
     elif isinstance(ivar, np.ndarray):
@@ -257,17 +235,19 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
 
     fill_value = np.array(np.nan).astype(ivar.dtype)
 
-    InterpFun = scinter.RegularGridInterpolator(model_coord_points, ivar_data, bounds_error=False, fill_value=fill_value)
+    InterpFun = scinter.RegularGridInterpolator(model_coord_points, ivar_data,
+                                                bounds_error=False,
+                                                fill_value=fill_value)
 
     obs_coord_interp_arg = []
     for iax in dims:
         obs_coord_interp_arg.append(obs_coord_dict[iax])
     obs_coord_interp_arg = np.vstack(obs_coord_interp_arg).T
-    #print('-------------------------------------')
-    #print(ivar.coord('time').units.num2date(model_coord_points[0]))
-    #print()
-    #print(ivar.coord('time').units.num2date(obs_coord_interp_arg[:, 0]))
-    #print('-------------------------------------')
+    # print('-------------------------------------')
+    # print(ivar.coord('time').units.num2date(model_coord_points[0]))
+    # print()
+    # print(ivar.coord('time').units.num2date(obs_coord_interp_arg[:, 0]))
+    # print('-------------------------------------')
     interp_array = InterpFun(obs_coord_interp_arg)
 
     if return_cube:
@@ -276,7 +256,8 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         interp_cube.units = ivar.units
         if 't' in dims:
             numeric_time = obs_coord_dict['t']
-            t = iris.coords.DimCoord(numeric_time, 'time', units=ivar.coord('time').units)
+            t = iris.coords.DimCoord(numeric_time, 'time',
+                                     units=ivar.coord('time').units)
             interp_cube.add_dim_coord(t, 0)
         if 'x' in dims:
             x = iris.coords.AuxCoord(obs_coord['x'], 'longitude')
@@ -291,18 +272,21 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     else:
         return interp_array
 
+
 def unrotate_uv(u, v, target_cs=None, remove_aux_xy=True):
     if target_cs is None:
         target_cs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
     uv = iris.analysis.cartography.rotate_winds(u, v, target_cs)
     if remove_aux_xy:
         [cube.remove_coord(i) for i in ('projection_x_coordinate',
-                                        'projection_y_coordinate') for cube in uv]
+                                        'projection_y_coordinate')
+         for cube in uv]
     return uv
+
 
 def unrotate_wind(cubelist,
                   uwind_name='x_wind', vwind_name='y_wind',
-                  newcs=iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS),
+                  newcs=iris.coord_systems.GeogCS(EARTH_RADIUS),
                   replace=False, verbose=0):
 
         u = get_cube(cubelist, uwind_name, lazy=False)
@@ -311,7 +295,7 @@ def unrotate_wind(cubelist,
         if u is not None or v is not None:
             oldcs = u.coord_system()
             if verbose > 1:
-                print('Rotating winds from {}'.format(oldcs) + ' to {}'.format(newcs))
+                print('Rotating winds from {} to {}'.format(oldcs, newcs))
                 print()
             u_rot, v_rot = iris.analysis.cartography.rotate_winds(u, v, newcs)
             if replace:
@@ -321,8 +305,11 @@ def unrotate_wind(cubelist,
                 cubelist.append(u_rot)
                 cubelist.append(v_rot)
         else:
-            if get_cube(cubelist, 'transformed_x_wind', lazy=False) is not None \
-            and get_cube(cubelist, 'transformed_y_wind', lazy=False) is not None:
+
+            if get_cube(cubelist, 'transformed_x_wind',
+                        lazy=False) is not None\
+                and get_cube(cubelist, 'transformed_y_wind',
+                             lazy=False) is not None:
                 print('transformed winds are in the file already')
             else:
                 print('u-wind or v-wind cubes not found. No winds rotating.')
@@ -331,14 +318,14 @@ def unrotate_wind(cubelist,
 def convert_unit_str(str1, str2):
     return cf_units.Unit(str1).convert(1, cf_units.Unit(str2))
 
-unnecessary_coords = ('forecast_period', )
+
 def extract_as_single_cube(cubelist, name):
     try:
         cube = cubelist.extract_strict(name)
     except iris.exceptions.ConstraintMismatchError:
         cube = None
         cubes = cubelist.extract(name)
-        for icoord in unnecessary_coords:
+        for icoord in REDUNDANT_COORDS:
             conc = cubes.concatenate()
             if len(conc) == 1:
                 cube = conc[0]
@@ -354,5 +341,27 @@ def extract_as_single_cube(cubelist, name):
             raise ValueError('Unable to concatenate')
     return cube
 
+
 def get_cube_datetimes(cube):
     return cube.coord('time').units.num2date(cube.coord('time').points)
+
+
+def rename_cubes_from_stashmaster(cube, stashmaster_file,
+                                  parser=configparser.ConfigParser(),
+                                  add_help=True):
+    if cube.name().lower() == 'unknown':
+        stash = cube.attributes['STASH']
+        parser.read(stashmaster_file)
+        try:
+            section = parser['stashmaster:code({})'.format(stash.item)]
+            new_name = '_'.join(section['description'].split())
+            cube.rename(new_name)
+            if add_help:
+                try:
+                    cube.attributes['help'] = section['help'].\
+                                              replace('=', '').\
+                                              replace('\n', '')
+                except KeyError:
+                    pass
+        except KeyError:
+            pass
