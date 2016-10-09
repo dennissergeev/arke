@@ -1,4 +1,4 @@
-#!python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import argparse
 import os
@@ -38,7 +38,7 @@ parser.add_argument("--testout", default=False, type=bool,
                     help="Open the resulting file once again\n"
                          "to test the output")
 
-def proc_um_file(input_fname, cube_name_and_axes, extrapolation_mode='linear', 
+def proc_um_file(input_fname, cube_name_and_axes, extrapolation_mode='linear',
                  unrotatewind=True, uwind_name='x_wind', vwind_name='y_wind',
                  replacewind=False, verbose=0):
 

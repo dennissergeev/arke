@@ -36,6 +36,7 @@ def add_coord_system(src_cube, cs=None):
 def interp_cubes_to_points(cubelist, cube_name_and_axes,
                            verbose=0, extrapolation_mode='linear'):
     """ """
+    scheme = iris.analysis.Linear(extrapolation_mode=extrapolation_mode)
     src_cube = get_cube(cubelist, cube_name_and_axes['name'])
     pnts = []
     if 'dim_ave' in cube_name_and_axes:
@@ -58,9 +59,7 @@ def interp_cubes_to_points(cubelist, cube_name_and_axes,
     for k, icube in enumerate(cubelist):
         if verbose > 1:
             utils.tic()
-        new_cube = (iris.analysis.
-                    interpolate.linear(icube, pnts,
-                                       extrapolation_mode=extrapolation_mode))
+        new_cube = icube.interpolate(pnts, scheme=scheme)
         if verbose > 1:
             print('Interpolation of {} is completed.'.format(new_cube.name()))
             utils.toc()
