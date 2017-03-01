@@ -88,9 +88,13 @@ def nearest_tval(cube, dt):
     itime = timevar.nearest_neighbour_index(timevar.units.date2num(dt))
     return timevar.units.num2date(timevar.points[itime])
 
-class grdstep(object):
+class GrdStep(object):
     def __init__(self, key):
+        assert isinstance(key, str)
         self.key = key
+
+    def __str__(self):
+        return self.key
 
     def to_str(self, mask='{0}.{1}km'):
         """km2p2 -> 2.2km"""
