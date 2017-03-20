@@ -318,12 +318,12 @@ def convert_unit_str(str1, str2):
     return cf_units.Unit(str1).convert(1, cf_units.Unit(str2))
 
 
-def extract_as_single_cube(cubelist, name):
+def extract_as_single_cube(cubelist, constraints):
     try:
-        cube = cubelist.extract_strict(name)
+        cube = cubelist.extract(constraints, strict=True)
     except iris.exceptions.ConstraintMismatchError:
         cube = None
-        cubes = cubelist.extract(name)
+        cubes = cubelist.extract(constraints)
         for icoord in REDUNDANT_COORDS:
             conc = cubes.concatenate()
             if len(conc) == 1:
