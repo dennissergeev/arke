@@ -108,7 +108,7 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
                                  h='y_axis_ind',
                                  label='z{}-{}y{}-{}x{}'.format(*zspan,
                                                                 *pnts['y'],
-                                                                pnts['x']))
+                                                                pnts['x'][0]))
             elif ((pnts['y'] == pnts['y'][0]).all() and
                   not (pnts['x'] == pnts['x'][0]).all()):
                 # Y const, X varies
@@ -117,7 +117,7 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
                 sect_info = dict(v=zcoord.name(),
                                  h='x_axis_ind',
                                  label='z{}-{}y{}x{}-{}'.format(*zspan,
-                                                                pnts['y'],
+                                                                pnts['y'][0],
                                                                 *pnts['x']))
             sect = cube[..., yslice, xslice]
         else:
