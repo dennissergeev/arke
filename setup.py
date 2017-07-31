@@ -1,12 +1,12 @@
 import os
 from setuptools import setup
 
-# Get version and release info, which is all stored in umtools/version.py
-ver_file = os.path.join('umtools', 'version.py')
+# Get version and release info, which is all stored in arke/version.py
+ver_file = os.path.join('arke', 'version.py')
 with open(ver_file) as f:
     exec(f.read())
 
-# Get version and release info, which is all stored in umtools/version.py
+# Get version and release info, which is all stored in arke/version.py
 req_file = 'requirements.txt'
 REQUIRES = [line.rstrip('\n') for line in open(req_file)]
 
