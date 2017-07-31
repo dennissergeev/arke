@@ -21,7 +21,8 @@ CLASSIFIERS = ["Development Status :: 3 - Alpha",
                "Intended Audience :: Science/Research",
                "License :: OSI Approved :: MIT License",
                "Operating System :: POSIX :: Linux",
-               "Programming Language :: Python",
+               "Programming Language :: Python :: 3.5",
+               "Programming Language :: Python :: 3.6",
                "Topic :: Scientific/Engineering :: Atmospheric Science"]
 
 # Description should be a one-liner:
@@ -61,3 +62,4 @@ VERSION = __version__
 PACKAGES = ['umtools',
             'umtools.tests']
 PACKAGE_DATA = {'umtools': [pjoin('data', '*')]}
+PYTHON_REQUIRES='>=3'
