@@ -163,6 +163,7 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
                               (ycoord.name(), rlat)]
 
             sect = trajectory.interpolate(cube, sampled_points)
+            _add_real_lonlat(sect, lon, lat)
 
             latspan = pnts['lat'][0], pnts['lat'][-1]
             lonspan = pnts['lon'][0], pnts['lon'][-1]
@@ -197,3 +198,17 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
             raise NotImplementedError(f"Can't deal with {cube.coord_system()}")
 
     return sect, sect_info
+
+
+def _add_real_lonlat(cube, lon_val, lat_val):
+    geogcs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
+    lon_coord = iris.coords.AuxCoord(lon_val,
+                                     standard_name='longitude',
+                                     units='degrees_east',
+                                     coord_system=geogcs)
+    lat_coord = iris.coords.AuxCoord(lat_val,
+                                     standard_name='latitude',
+                                     units='degrees_north',
+                                     coord_system=geogcs)
+    cube.add_aux_coord(lon_coord, -1)
+    cube.add_aux_coord(lat_coord, -1)
