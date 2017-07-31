@@ -197,7 +197,8 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
         else:
             raise NotImplementedError(f"Can't deal with {cube.coord_system()}")
 
-    return sect, sect_info
+    sect.attributes['sect_info'] = sect_info
+    return sect
 
 
 def _add_real_lonlat(cube, lon_val, lat_val):

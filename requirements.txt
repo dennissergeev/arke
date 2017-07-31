@@ -1,5 +1,1 @@
 iris
-matplotlib
-netcdf4
-numpy
-scipy
