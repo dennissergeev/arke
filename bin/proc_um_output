@@ -5,8 +5,9 @@ import os
 
 import iris
 
-import umtools.irismode as umt
-from umtools import utils
+from arke.numerics import unrotate_wind
+from arke.utils import replace_unknown_names
+from arke.grid import interp_cubes_to_points
 
 DESCR = """
 Postprocess Unified Model output :
@@ -43,7 +44,7 @@ def proc_um_file(input_fname, cube_name_and_axes, extrapolation_mode='linear',
                  replacewind=False, verbose=0):
 
     cubelist = iris.load(input_fname)
-    umt.replace_unknown_names(cubelist)
+    replace_unknown_names(cubelist)
 
     if verbose > 1:
         print('=== Input CubeList ===')
@@ -51,11 +52,11 @@ def proc_um_file(input_fname, cube_name_and_axes, extrapolation_mode='linear',
         print(cubelist)
         print('======================')
 
-    umt.interp_cubes_to_points(cubelist, cube_name_and_axes, verbose)
+    interp_cubes_to_points(cubelist, cube_name_and_axes, verbose)
 
     if unrotatewind:
-        umt.unrotate_wind(cubelist, uwind_name, vwind_name,
-                          replace=replacewind, verbose=verbose)
+        unrotate_wind(cubelist, uwind_name, vwind_name,
+                      replace=replacewind, verbose=verbose)
 
     if verbose > 1:
         print('=== Output CubeList ===')
