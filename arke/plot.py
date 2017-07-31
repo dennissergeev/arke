@@ -77,3 +77,19 @@ def prepare_map(vrbls_lists, geoax=False):
         mapkey = {}
 
     return fig, axgr, mapkey
+
+
+def add_xaxis_below(parent_ax, xtick_array, xlab_array, shift_down):
+    newax = parent_ax.twiny()
+    newax.set_xticks(xtick_array)
+    newax.set_xticklabels(xlab_array)
+    newax.spines['left'].set_visible(False)
+    newax.spines['right'].set_visible(False)
+    newax.set_frame_on(True)
+    newax.patch.set_visible(False)
+    newax.xaxis.set_ticks_position('bottom')
+    newax.xaxis.set_label_position('bottom')
+    newax.spines['bottom'].set_position(('outward', shift_down))
+    newax.tick_params(axis='both', which='major')
+    newax.grid('off')
+    return newax
