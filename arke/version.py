@@ -28,15 +28,15 @@ CLASSIFIERS = ["Development Status :: 3 - Alpha",
 # Description should be a one-liner:
 description = "arke: a Python toolbox for UK Met Office Unified Model output"
 # Long description will go up on the pypi page
-long_description = """
-
-"""
+# long_description = """
+# 
+# """
 
 NAME = "arke"
 MAINTAINER = "Denis Sergeev"
 MAINTAINER_EMAIL = "dennis.sergeev@gmail.com"
 DESCRIPTION = description
-LONG_DESCRIPTION = long_description
+# LONG_DESCRIPTION = long_description
 URL = "http://github.com/dennissergeev/arke"
 DOWNLOAD_URL = ""
 LICENSE = "MIT"

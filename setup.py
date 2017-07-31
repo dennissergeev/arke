@@ -10,6 +10,9 @@ with open(ver_file) as f:
 req_file = 'requirements.txt'
 REQUIRES = [line.rstrip('\n') for line in open(req_file)]
 
+with open('README.md', 'r') as f:
+    LONG_DESCRIPTION = f.read()
+
 scripts = ['bin/proc_um_output']
 
 opts = dict(name=NAME,
