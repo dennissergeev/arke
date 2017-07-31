@@ -198,6 +198,7 @@ def extract_vert_section(cube, pnts, sample_count='auto'):
             raise NotImplementedError(f"Can't deal with {cube.coord_system()}")
 
     sect.attributes['sect_info'] = sect_info
+    sect.attributes['sect_info']['pnts'] = pnts
     return sect
 
 
