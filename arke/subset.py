@@ -211,5 +211,5 @@ def _add_real_lonlat(cube, lon_val, lat_val):
                                      standard_name='latitude',
                                      units='degrees_north',
                                      coord_system=geogcs)
-    cube.add_aux_coord(lon_coord, -1)
-    cube.add_aux_coord(lat_coord, -1)
+    cube.add_aux_coord(lon_coord, 1)
+    cube.add_aux_coord(lat_coord, 1)
