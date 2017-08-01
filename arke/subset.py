@@ -88,12 +88,13 @@ def subset_cubelist(cubelist, h_subset):
     return cl
 
 
-def extract_vert_section(cube, pnts, sample_count='auto'):
+def extract_vert_section(cube, pnts):
     """
     Extract vertical slice of a cube
 
     Assume cube's dims: (..., y, x)
     """
+    sample_count = pnts['sample_count']
     zcoord = cube.coord(axis='z', dim_coords=True)
     zspan = int(zcoord.points[0]), int(zcoord.points[-1])
     if 'x' in pnts and 'y' in pnts:
