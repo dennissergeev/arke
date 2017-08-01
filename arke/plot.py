@@ -13,14 +13,39 @@ from .numerics import unrotate_xy_grids
 from .cart import lcc_map_grid
 
 
-def prepare_map(vrbls_lists, geoax=False):
+def make_axesgrid(vrbls_lists, axsize=8):
     """
     TODO: docstring
     """
     nplots = len(vrbls_lists)
     nrows = int(np.sqrt(nplots))
     ncols = int(np.ceil(nplots / nrows))
-    fig = plt.figure(figsize=(ncols*8, nrows*8))
+    fig = plt.figure(figsize=(ncols*axsize, nrows*axsize//2))
+    vrbls = vrbls_lists[0]
+    # Check if colorbar is needed
+    axgr_kw = {}
+    for icube in vrbls:
+        if isinstance(icube, iris.cube.Cube):
+            cbar = icube.attributes.get('colorbar')
+            if cbar or isinstance(cbar, dict):
+                axgr_kw.update(axes_pad=0.2,
+                               cbar_location='right',
+                               cbar_mode='single',
+                               cbar_pad=0.1,
+                               cbar_size='3%')
+                break
+    axgr = AxesGrid(fig, 111, (nrows, ncols), **axgr_kw)
+    return fig, axgr
+
+
+def prepare_map(vrbls_lists, geoax=False, axsize=8):
+    """
+    TODO: docstring
+    """
+    nplots = len(vrbls_lists)
+    nrows = int(np.sqrt(nplots))
+    ncols = int(np.ceil(nplots / nrows))
+    fig = plt.figure(figsize=(ncols*axsize, nrows*axsize))
     vrbls = vrbls_lists[0]  # TODO: allow different domains
     # Check if colorbar is needed
     axgr_kw = {}
