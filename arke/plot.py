@@ -13,7 +13,7 @@ from .numerics import unrotate_xy_grids
 from .cart import lcc_map_grid
 
 
-def make_axesgrid(vrbls_lists, axsize=8):
+def make_axesgrid(vrbls_lists, axsize=8, axes_pad=0.2):
     """
     TODO: docstring
     """
@@ -23,13 +23,12 @@ def make_axesgrid(vrbls_lists, axsize=8):
     fig = plt.figure(figsize=(ncols*axsize, nrows*axsize//2))
     vrbls = vrbls_lists[0]
     # Check if colorbar is needed
-    axgr_kw = {}
+    axgr_kw = dict(axes_pad=axes_pad)
     for icube in vrbls:
         if isinstance(icube, iris.cube.Cube):
             cbar = icube.attributes.get('colorbar')
             if cbar or isinstance(cbar, dict):
-                axgr_kw.update(axes_pad=0.2,
-                               cbar_location='right',
+                axgr_kw.update(cbar_location='right',
                                cbar_mode='single',
                                cbar_pad=0.1,
                                cbar_size='3%')
@@ -48,13 +47,12 @@ def prepare_map(vrbls_lists, geoax=False, axsize=8):
     fig = plt.figure(figsize=(ncols*axsize, nrows*axsize))
     vrbls = vrbls_lists[0]  # TODO: allow different domains
     # Check if colorbar is needed
-    axgr_kw = {}
+    axgr_kw = dict(axes_pad=0.1)
     for icube in vrbls:
         if isinstance(icube, iris.cube.Cube):
             cbar = icube.attributes.get('colorbar')
             if cbar or isinstance(cbar, dict):
-                axgr_kw.update(axes_pad=0.1,
-                               cbar_location='right',
+                axgr_kw.update(cbar_location='right',
                                cbar_mode='single',
                                cbar_pad=0.05,
                                cbar_size='3%')
