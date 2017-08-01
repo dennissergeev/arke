@@ -20,7 +20,7 @@ def make_axesgrid(vrbls_lists, axsize=8, axes_pad=0.2):
     nplots = len(vrbls_lists)
     nrows = int(np.sqrt(nplots))
     ncols = int(np.ceil(nplots / nrows))
-    fig = plt.figure(figsize=(ncols*axsize, nrows*axsize//2))
+    fig = plt.figure(figsize=(ncols*axsize, nrows*axsize))
     vrbls = vrbls_lists[0]
     # Check if colorbar is needed
     axgr_kw = dict(axes_pad=axes_pad)
