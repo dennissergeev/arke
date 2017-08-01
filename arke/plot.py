@@ -23,7 +23,7 @@ def make_axesgrid(vrbls_lists, axsize=8, axes_pad=0.2):
     fig = plt.figure(figsize=(ncols*axsize, nrows*axsize))
     vrbls = vrbls_lists[0]
     # Check if colorbar is needed
-    axgr_kw = dict(axes_pad=axes_pad)
+    axgr_kw = dict(aspect=False, axes_pad=axes_pad)
     for icube in vrbls:
         if isinstance(icube, iris.cube.Cube):
             cbar = icube.attributes.get('colorbar')
