@@ -27,7 +27,7 @@ def extract_as_single_cube(cubelist, constraints):
                     break
         if cube is None:
             _msg = 'Unable to concatenate {}'.format(cubes)
-            raise iris.exceptions.ConcatenateError(_msg)
+            raise iris.exceptions.ConcatenateError([_msg])
     return cube
 
 
