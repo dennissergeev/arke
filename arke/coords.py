@@ -3,6 +3,7 @@
 Cube coords and related functions
 """
 import iris
+from iris.util import broadcast_to_shape
 from iris.fileformats.pp import EARTH_RADIUS
 
 PHYS_COORDS = dict(x=('x', 'grid_longitude', 'longitude'),
@@ -82,3 +83,26 @@ def get_phys_coord(vrbl, axis, subtract360=True):
             break
 
     return result
+
+
+def pres_coord_to_cube(other_cube):
+    pcoord = other_cube.coord('pressure')
+    dim_map = other_cube.coord_dims('pressure')
+    p_data = pcoord.points
+    if len(dim_map) > 0:
+        p_data = broadcast_to_shape(p_data,
+                                    other_cube.shape,
+                                    dim_map)
+        dc = [(c.copy(), other_cube.coord_dims(c))
+              for c in other_cube.dim_coords]
+        ac = [(c.copy(), other_cube.coord_dims(c))
+              for c in other_cube.aux_coords]
+        pcube = iris.cube.Cube(data=p_data,
+                               units=pcoord.units,
+                               dim_coords_and_dims=dc,
+                               aux_coords_and_dims=ac,
+                               )
+    else:
+        pcube = iris.cube.Cube(data=p_data,
+                               units=pcoord.units)
+    return pcube
