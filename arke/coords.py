@@ -99,6 +99,7 @@ def pres_coord_to_cube(other_cube):
               for c in other_cube.aux_coords]
         pcube = iris.cube.Cube(data=p_data,
                                units=pcoord.units,
+                               standard_name='air_pressure',
                                dim_coords_and_dims=dc,
                                aux_coords_and_dims=ac,
                                )

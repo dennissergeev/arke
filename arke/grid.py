@@ -83,6 +83,47 @@ def unrotate_xy_grids(cube):
     return (x, y)
 
 
+def unrotate_lonlat_grids(cube):
+    """
+    Convert rotated-pole lons and lats to unrotated ones
+    using lon and lat coordinate for a given cube.
+    Based on _get_lat_lon_coords() and unrotate_pole() functions.
+
+    Args:
+
+        * cube - The cube with rotated coordinate system
+                 for which to generate 2D X and Y unrotated coordinates.
+
+    Example::
+
+        lon, lat = unrotate_latlon_grids(cube)
+
+    """
+    y_coord, x_coord = iris.analysis.cartography._get_lat_lon_coords(cube)
+    x = x_coord.points
+    y = y_coord.points
+
+    if x.ndim == y.ndim == 1:
+        # Convert to 2D.
+        x, y = np.meshgrid(x, y)
+    elif x.ndim == y.ndim == 2:
+        # They are already in the correct shape.
+        pass
+    else:
+        raise ValueError("Expected 1D or 2D XY coords")
+
+    cs = cube.coord_system('CoordSystem')
+    if isinstance(cs, iris.coord_systems.RotatedGeogCS):
+        nplon = cube.coord_system().grid_north_pole_longitude
+        nplat = cube.coord_system().grid_north_pole_latitude
+        x, y = iris.analysis.cartography.unrotate_pole(x, y, nplon, nplat)
+    else:
+        # no rotation needed
+        pass
+
+    return (x, y)
+
+
 def unrotate_uv(u, v, target_cs=None, remove_aux_xy=True):
     if target_cs is None:
         target_cs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
