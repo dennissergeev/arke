@@ -232,6 +232,35 @@ class AtmosFlow:
         msg += "\n".join(tuple(i.name() for i in self.cubes))
         return msg
 
+    def d_dx(self, name):
+        r"""
+        Derivative of a cube along the x-axis
+        .. math::
+            \frac{\partial }{\partial x}
+        """
+        v = self.cubes.extract_strict(name)
+        return cube_deriv(v, self.xcoord)
+
+    def d_dy(self, name):
+        r"""
+        Derivative of a cube along the y-axis
+        .. math::
+            \frac{\partial }{\partial y}
+        """
+        v = self.cubes.extract_strict(name)
+        return cube_deriv(v, self.ycoord)
+
+    def hgradmag(self, name):
+        r"""
+        Magnitude of the horizontal gradient of a cube
+        .. math::
+            \sqrt[(\frac{\partial }{\partial y})^2
+                 +(\frac{\partial }{\partial y})^2]
+        """
+        dvdx2 = self.d_dx(name) ** 2
+        dvdy2 = self.d_dy(name) ** 2
+        return (dvdx2 + dvdy2) ** 0.5
+
     @cached_property
     def wspd(self):
         r"""
