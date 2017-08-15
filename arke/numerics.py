@@ -209,18 +209,26 @@ class AtmosFlow:
                              units='degrees',
                              standard_name='latitude')
         self.fcor = mcalc.coriolis_parameter(self.lats)
+        self.fcor.convert_units('s-1')
+
+        for ax, rot_name in zip(('x',  'y'),
+                                ('grid_longitude', 'grid_latitude')):
+            for cube in self.cubes:
+                if rot_name in [i.name() for i in cube.coords(axis=ax)]:
+                    cube.remove_coord(rot_name)
 
         # Non-spherical coords?
-        self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
+        # self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
+        self.horiz_cs = thecube.coord_system()
         self.spherical_coords = isinstance(self.horiz_cs,
                                            (iris.coord_systems.GeogCS,
                                             iris.coord_systems.RotatedGeogCS))
-        # interface for spherical coordinates switch?
+        # todo: interface for spherical coordinates switch?
         assert not self.spherical_coords,\
             'Only non-spherical coordinates are allowed ...'
 
     def __repr__(self):
-        msg = "pyveccalc 'Atmospheric Flow' containing of:\n"
+        msg = "arke `Atmospheric Flow` containing of:\n"
         msg += "\n".join(tuple(i.name() for i in self.cubes))
         return msg
 
