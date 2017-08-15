@@ -174,8 +174,9 @@ def cube_deriv(cube, coord):
 
 class AtmosFlow:
     """Atmospheric Flow in Cartesian coords"""
-    def __init__(self, **kw_vars):
+    def __init__(self, cartesian=True, **kw_vars):
         self.__dict__.update(kw_vars)
+        self.cartesian = cartesian
 
         self.cubes = CubeList(filter(iscube, self.__dict__.values()))
         self.main_cubes = CubeList(filter(iscube_and_not_scalar,
@@ -212,11 +213,12 @@ class AtmosFlow:
         self.fcor = mcalc.coriolis_parameter(self.lats)
         self.fcor.convert_units('s-1')
 
-        for ax, rot_name in zip(('x',  'y'),
-                                ('grid_longitude', 'grid_latitude')):
-            for cube in self.cubes:
-                if rot_name in [i.name() for i in cube.coords(axis=ax)]:
-                    cube.remove_coord(rot_name)
+        if self.cartesian:
+            for ax, rot_name in zip(('x',  'y'),
+                                    ('grid_longitude', 'grid_latitude')):
+                for cube in self.cubes:
+                    if rot_name in [i.name() for i in cube.coords(axis=ax)]:
+                        cube.remove_coord(rot_name)
 
         # Non-spherical coords?
         # self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
@@ -227,8 +229,10 @@ class AtmosFlow:
         # todo: interface for spherical coordinates switch?
         # assert not self._spherical_coords,\
         #     'Only non-spherical coordinates are allowed ...'
-        if self._spherical_coords:
-            warnings.warn('Cubes are in spherical coordinates!')
+        if self.cartesian and self._spherical_coords:
+            warnings.warn('Cubes are in spherical coordinates!'
+                          '\n Use `replace_lonlat_dimcoord_with_cart function`'
+                          ' to change coordinates!')
 
     def __repr__(self):
         msg = "arke `Atmospheric Flow` containing of:\n"
