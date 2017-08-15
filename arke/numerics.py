@@ -202,7 +202,7 @@ class AtmosFlow:
 
         if not hasattr(self, 'lats'):
             try:
-                _, lats = grid.unrotate_lonlat_grids(thecube, dim_coords=False)
+                _, lats = grid.unrotate_lonlat_grids(thecube)
             except:
                 lats = np.array([45.])
             self.lats = Cube(lats,
