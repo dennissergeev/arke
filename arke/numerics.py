@@ -7,8 +7,9 @@ Previously the core of pyveccalc package
 import numpy as np
 from cached_property import cached_property
 import iris
-from iris.cube import Cube, CubeList
 from iris.analysis.calculus import differentiate
+from iris.coords import AuxCoord
+from iris.cube import Cube, CubeList
 import warnings
 
 from . import met_calc as mcalc
@@ -162,10 +163,11 @@ def cube_deriv(cube, coord):
     to the points of the input cube
     """
     res = differentiate(cube, coord)
-    if (res.coord(axis='x') != cube.coord(axis='x') or
-       res.coord(axis='y') != cube.coord(axis='y')):
+    kw = dict(dim_coords=True)
+    if (res.coord(axis='x', **kw) != cube.coord(axis='x', **kw) or
+       res.coord(axis='y', **kw) != cube.coord(axis='y', **kw)):
         res = res.regridded(cube)
-    elif res.coord(axis='z') != cube.coord(axis='z'):
+    elif res.coord(axis='z', **kw) != cube.coord(axis='z', **kw):
         cube_z_points = [(cube.coord(axis='z').name(),
                           cube.coord(axis='z').points)]
         res = res.interpolate(cube_z_points, iris.analysis.Linear())
@@ -511,7 +513,7 @@ class AtmosFlow:
             \rho = \frac{p}{R_d T}
         """
         p = self.cubes.extract_strict('air_pressure')
-        rd = iris.coords.AuxCoord(mconst.Rd.data, units=mconst.Rd.units)
+        rd = AuxCoord(mconst.Rd.data, units=mconst.Rd.units)
         try:
             temp = self.cubes.extract_strict('air_temperature')
         except iris.exceptions.ConstraintMismatchError:
@@ -554,7 +556,7 @@ class AtmosFlow:
         try:
             t = self.cubes.extract_strict('air_temperature')
         except iris.exceptions.ConstraintMismatchError:
-            p0 = iris.coords.AuxCoord(mconst.P0.data, units=mconst.P0.units)
+            p0 = AuxCoord(mconst.P0.data, units=mconst.P0.units)
             kappa = mconst.kappa.data
             p = self.cubes.extract_strict('air_pressure')
             t = self.theta * (p / p0) ** kappa
@@ -562,6 +564,25 @@ class AtmosFlow:
             t.convert_units('K')
             self.cubes.append(t)
         return t
+
+    @cached_property
+    def thetae(self):
+        r"""
+        Equivalent potential temperature
+
+        .. math::
+            \theta_e = \theta e^\frac{L_v r_s}{C_{pd} T}
+        """
+        try:
+            th = self.cubes.extract_strict('equivalent_potential_temperature')
+        except iris.exceptions.ConstraintMismatchError:
+            p = self.cubes.extract_strict('air_pressure')
+            temp = self.cubes.extract_strict('air_temperature')
+            th = mcalc.equivalent_potential_temperature(p, temp)
+            th.rename('equivalent_potential_temperature')
+            th.convert_units('K')
+            self.cubes.append(th)
+        return th
 
     @cached_property
     def specific_volume(self):
@@ -627,9 +648,37 @@ class AtmosFlow:
         res.convert_units('s-1')
         return res
 
+    @cached_property
     def brunt_vaisala_squared(self):
-        res = cube_deriv(self.theta, self.zcoord)
-        res *= self.g**2 * self.density / self.theta
+        r"""
+        Brunt–Väisälä frequency squared
+
+        (pressure coordinates)
+        .. math::
+            N^2 = -\frac{g^2 \rho}{\theta}\frac{\partial \theta}{\partial p}
+        """
+        dthdp = cube_deriv(self.theta, self.zcoord)
+        g2 = -1 * mconst.g**2
+        g2 = AuxCoord(g2.data, units=g2.units)
+        res = self.density / self.theta * dthdp * g2
         res.rename('square_of_brunt_vaisala_frequency_in_air')
         res.convert_units('s-2')
+        return res
+
+    @cached_property
+    def eady_growth_rate(self):
+        r"""
+        Eady growth rate
+
+        (pressure coordinates)
+        .. math::
+            EGR = 0.31 * \frac{f}{N}\frac{\partial V}{\partial z}
+                = 0.31 * \frac{-\rho g f}{N}\frac{\partial V}{\partial p}
+        """
+        factor = -1 * mconst.egr_factor * self.fcor * mconst.g
+        dvdp = (self.du_dz**2 + self.dv_dz**2) ** 0.5
+        res = (self.density * factor.data * AuxCoord(1, units=factor.units)
+               * dvdp / self.brunt_vaisala_squared**0.5)
+        res.rename('eady_growth_rate')
+        res.convert_units('s-1')
         return res
