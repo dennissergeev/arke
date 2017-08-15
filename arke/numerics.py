@@ -220,12 +220,14 @@ class AtmosFlow:
         # Non-spherical coords?
         # self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
         self.horiz_cs = thecube.coord_system()
-        self.spherical_coords = isinstance(self.horiz_cs,
-                                           (iris.coord_systems.GeogCS,
-                                            iris.coord_systems.RotatedGeogCS))
+        self._spherical_coords = isinstance(self.horiz_cs,
+                                            (iris.coord_systems.GeogCS,
+                                             iris.coord_systems.RotatedGeogCS))
         # todo: interface for spherical coordinates switch?
-        assert not self.spherical_coords,\
-            'Only non-spherical coordinates are allowed ...'
+        # assert not self._spherical_coords,\
+        #     'Only non-spherical coordinates are allowed ...'
+        if self._spherical_coords:
+            warnings.warn('Cubes are in spherical coordinates!')
 
     def __repr__(self):
         msg = "arke `Atmospheric Flow` containing of:\n"
