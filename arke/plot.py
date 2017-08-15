@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 import numpy as np
 
-from .numerics import unrotate_xy_grids
+from .grid import unrotate_xy_grids
 from .cart import lcc_map_grid
 
 

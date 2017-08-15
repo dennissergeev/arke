@@ -7,8 +7,8 @@ from iris.analysis import trajectory
 from iris.analysis.cartography import rotate_pole
 import numpy as np
 
-from .numerics import (nearest_xy_grid_2d_index,
-                       mask_cube_outside_circle_xy)
+from .grid import (nearest_xy_grid_2d_index,
+                   mask_cube_outside_circle_xy)
 
 
 def slice_cubelist(cubelist, coord_name, coord_values):
