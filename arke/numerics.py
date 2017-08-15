@@ -9,6 +9,7 @@ from cached_property import cached_property
 import iris
 from iris.cube import Cube, CubeList
 from iris.analysis.calculus import differentiate
+import warnings
 
 from . import met_calc as mcalc
 from . import met_const as mconst
