@@ -8,7 +8,7 @@ Python toolbox for UK Met Office Unified Model output
 The package is in early stages of development, so no APIs are considered stable.
 
 ## Dependencies
-The package is build on top of [Iris](https://github.com/SciTools/iris) and has no extra dependencies
+The package is build on top of [Iris](https://github.com/SciTools/iris) and borrows meteorological calculations from [MetPy](https://github.com/unidata/metpy).
 
 ## Name
 [Arke](https://en.wikipedia.org/wiki/Arke_(mythology))
