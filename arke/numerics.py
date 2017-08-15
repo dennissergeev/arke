@@ -211,8 +211,7 @@ class AtmosFlow:
         self.fcor = mcalc.coriolis_parameter(self.lats)
 
         # Non-spherical coords?
-        self.horiz_cs = (thecube.coord(axis='x', dim_coords=True)
-                         .coord_system('CoordSystem'))
+        self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
         self.spherical_coords = isinstance(self.horiz_cs,
                                            (iris.coord_systems.GeogCS,
                                             iris.coord_systems.RotatedGeogCS))
