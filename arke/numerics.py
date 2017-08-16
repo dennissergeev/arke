@@ -259,7 +259,7 @@ class AtmosFlow:
         .. math::
             \frac{\partial }{\partial y}
         """
-        if name is None and isinstance(alias, 'str'):
+        if name is None and isinstance(alias, str):
             v = getattr(self, alias)
         else:
             v = self.cubes.extract_strict(name)

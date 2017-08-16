@@ -105,5 +105,6 @@ def pres_coord_to_cube(other_cube):
                                )
     else:
         pcube = iris.cube.Cube(data=p_data,
+                               standard_name='air_pressure',
                                units=pcoord.units)
     return pcube
