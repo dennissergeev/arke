@@ -676,7 +676,7 @@ class AtmosFlow:
                 = 0.31 * \frac{-\rho g f}{N}\frac{\partial V}{\partial p}
         """
         factor = -1 * mconst.egr_factor * self.fcor * mconst.g
-        dvdp = (self.du_dz**2 + self.dv_dz**2) ** 0.5
+        dvdp = cube_deriv(self.wspd, self.zcoord)
         res = (self.density * factor.data * AuxCoord(1, units=factor.units)
                * dvdp / self.brunt_vaisala_squared**0.5)
         res.rename('eady_growth_rate')
