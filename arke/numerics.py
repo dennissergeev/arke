@@ -295,12 +295,12 @@ class AtmosFlow:
         r"""
         Calculate total kinetic energy
         .. math::
-            0.5\rho(u^2 + v^2 + w^2)
+            0.5(u^2 + v^2 + w^2)
         """
         res = 0
         for cmpnt in self.wind_cmpnt:
             res += cmpnt**2
-        res = 0.5 * res * self.density
+        res = 0.5 * res  # * self.density
         res.rename('total_kinetic_energy')
         return res
 
