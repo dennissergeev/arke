@@ -301,6 +301,7 @@ class AtmosFlow:
         for cmpnt in self.wind_cmpnt:
             res += cmpnt**2
         res = 0.5 * res  # * self.density
+        res.convert_units('m2 s-2')
         res.rename('total_kinetic_energy')
         return res
 
