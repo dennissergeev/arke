@@ -442,7 +442,7 @@ class AtmosFlow:
         .. math::
             \nabla\cdot\vec v (\zeta+f)
         """
-        res = self.div_h*(self.rel_vort + self.fcor)
+        res = self.div_h * (self.rel_vort + self.fcor.data)
         res.rename('stretching_term_of_atmosphere_relative_vorticity_budget')
         res.convert_units('s-2')
         return res
