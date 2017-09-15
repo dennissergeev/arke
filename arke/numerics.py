@@ -592,6 +592,21 @@ class AtmosFlow:
         return th
 
     @cached_property
+    def relh(self):
+        r""" Relative humdity """
+        try:
+            relh = self.cubes.extract_strict('relative_humidity')
+        except iris.exceptions.ConstraintMismatchError:
+            p = self.cubes.extract_strict('air_pressure')
+            temp = self.cubes.extract_strict('air_temperature')
+            spechum = self.cubes.extract_strict('specific_humidity')
+            rh = mcalc.specific_volume(p, temp, spechum)
+            rh.rename('relative_humidity')
+            rh.convert_units('1')
+            self.cubes.append(rh)
+        return rh
+
+    @cached_property
     def specific_volume(self):
         r"""
         Air Specific Volume
