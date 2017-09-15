@@ -600,7 +600,7 @@ class AtmosFlow:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
             spechum = self.cubes.extract_strict('specific_humidity')
-            rh = mcalc.specific_volume(p, temp, spechum)
+            rh = mcalc.specific_to_relative_humidity(p, temp, spechum)
             rh.rename('relative_humidity')
             rh.convert_units('1')
             self.cubes.append(rh)
