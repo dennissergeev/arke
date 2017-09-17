@@ -73,6 +73,9 @@ def subset_cubelist(cubelist, h_subset):
             xslice = slice(h_subset['corners'][0], h_subset['corners'][1])
             yslice = slice(h_subset['corners'][2], h_subset['corners'][3])
             cl.append(cube[..., yslice, xslice])
+        elif h_subset['method'] == 'rim':
+            width = h_subset['width']
+            cl.append(cube[..., width:-width, width:-width])
         elif h_subset['method'] == 'radius':
             # print(cube, h_subset['r'], ix, iy)
             dx = cube.attributes['um_res'].to_flt('km')
