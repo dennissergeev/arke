@@ -38,6 +38,8 @@ def cubehandler(f):
 coriolis_parameter = cubehandler(calc.coriolis_parameter)
 potential_temperature = cubehandler(calc.potential_temperature)
 equivalent_potential_temperature = cubehandler(calc.equivalent_potential_temperature)  # noqa
+vapor_pressure = cubehandler(calc.vapor_pressure)
+dewpoint = cubehandler(calc.dewpoint)
 
 
 def specific_to_relative_humidity(pressure, temperature, specific_humidity):
@@ -66,7 +68,7 @@ def specific_to_relative_humidity(pressure, temperature, specific_humidity):
     """
     e_s = cubehandler(calc.saturation_vapor_pressure)(temperature)
     mixr = specific_humidity / ((specific_humidity)*(-1) + 1)
-    e = cubehandler(calc.vapor_pressure)(pressure, mixr)
+    e = vapor_pressure(pressure, mixr)
     relh = e / e_s
     relh.rename('relative_humidity')
     return relh

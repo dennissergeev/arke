@@ -66,8 +66,8 @@ def subset_cubelist(cubelist, h_subset):
         if h_subset['method'] == 'wh':
             xslice = slice(ix-h_subset['w']//2,
                            ix+h_subset['w']//2+1)
-            yslice = slice(iy-h_subset['y']//2,
-                           iy+h_subset['y']//2+1)
+            yslice = slice(iy-h_subset['h']//2,
+                           iy+h_subset['h']//2+1)
             cl.append(cube[..., yslice, xslice])
         elif h_subset['method'] == 'xy':
             xslice = slice(h_subset['corners'][0], h_subset['corners'][1])

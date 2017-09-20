@@ -585,7 +585,11 @@ class AtmosFlow:
         except iris.exceptions.ConstraintMismatchError:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
-            th = mcalc.equivalent_potential_temperature(p, temp)
+            spechum = self.cubes.extract_strict('specific_humidity')
+            mixr = spechum / ((spechum)*(-1) + 1)
+            e = mcalc.vapor_pressure(p, mixr)
+            dew = mcalc.dewpoint(e)
+            th = mcalc.equivalent_potential_temperature(p, temp, dew)
             th.rename('equivalent_potential_temperature')
             th.convert_units('K')
             self.cubes.append(th)
@@ -595,7 +599,7 @@ class AtmosFlow:
     def relh(self):
         r""" Relative humdity """
         try:
-            relh = self.cubes.extract_strict('relative_humidity')
+            rh = self.cubes.extract_strict('relative_humidity')
         except iris.exceptions.ConstraintMismatchError:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
