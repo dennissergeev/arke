@@ -1,0 +1,368 @@
+#!/usr/bin/env python
+# coding: utf-8
+"""
+Prepare MetUM LAM output for the Lagranto trajectory model
+"""
+import argparse
+import cf_units
+from collections import OrderedDict
+from datetime import datetime
+import iris
+import netCDF4 as nc
+import numpy as np
+from os import getenv
+from path import Path
+from shutil import rmtree
+import subprocess as sb
+import sys
+from tqdm import tqdm
+import warnings
+#
+from arke.grid import unrotate_uv
+from arke.coords import get_cube_datetimes
+
+iris.FUTURE.netcdf_promote = True
+iris.FUTURE.cell_datetime_objects = True
+
+EXTDIR = Path('/media') / getenv('USER') / 'Elements'
+TOPDIR = EXTDIR / 'phd' / 'modelling' / 'UM' / 'exp_results'
+SUBDIR = 'plev'
+UNROTATE_WINDS = True
+DEFAULT_GRD_DELTA = 'km2p2'
+
+PNAMES = ('PS', 'U', 'V', 'OMEGA', 'PS')
+SNAMES = ('PS', 'PV', 'T', 'RH')
+
+CUBE_DICT = dict(
+                 U=dict(um_name='x_wind'),
+                 V=dict(um_name='y_wind'),
+                 OMEGA=dict(um_name='lagrangian_tendency_of_air_pressure'),
+                 PS=dict(um_name='air_pressure_at_sea_level',
+                         scl=0.01, units='hPa', regrid_to='x_wind'),
+                 PV=dict(stash='m01s15i229'),
+                 # um_name='POTENTIAL VORTICITY ON PRESSURE LEVS'),
+                 T=dict(um_name='air_temperature'),
+                 RH=dict(stash='m01s30i206'),
+                 # um_name='RELATIVE HUMIDITY ON P LEV/UV GRID'),
+                )
+
+
+def valid_date(s):
+    try:
+        return datetime.strptime(s, '%Y%m%dT%H%MZ')
+    except ValueError:
+        msg = "Not a valid date: '{0}'.".format(s)
+        raise argparse.ArgumentTypeError(msg)
+
+
+def parse_args(args=None):
+    ap = argparse.ArgumentParser(__file__,
+                                 description=__doc__,
+                                 formatter_class=argparse.
+                                 ArgumentDefaultsHelpFormatter,
+                                 epilog='Example of use:\ncoming soon...')
+    ag_in = ap.add_argument_group(title='Input parameters')
+    ag_in.add_argument('-n', '--name', type=str, required=True,
+                       help='Case name (e.g. "ctrl")')
+    ag_in.add_argument('--fcst_init', required=True,
+                       type=valid_date,
+                       help='Forecast reference time (YYYYmmddTHHMMZ)')
+    ag_in.add_argument('--grd_delta', type=str, default=DEFAULT_GRD_DELTA,
+                       help='MetUM grid spacing')
+    # ap.add_argument('-p', '--paths', type=str, nargs='*',
+    #                 help='Directory(ies) with input data')
+
+    # ag_out = ap.add_mutually_exclusive_group()
+    ag_out_loc = ap.add_argument_group(title='Option 1: Local')
+    ag_out_loc.add_argument('-l', '--local', action='store_true',
+                            default=False,
+                            help='Save to a subfolder of the input directory')
+    ag_out_loc.add_argument('-f', '--force', action='store_true',
+                            default=False,
+                            help='Overwrite output directory')
+    ag_out_gr = ap.add_argument_group(title='Option 2: Grace')
+    ag_out_gr.add_argument('--user_grace', type=str, default=getenv('USER'),
+                           help='Username on Grace')
+    ag_out_gr.add_argument('--dir_grace', type=str, default='test',
+                           help='Subdirectory on Grace')
+    ag_out_ar = ap.add_argument_group(title='Option 3: ARCHER')
+    ag_out_ar.add_argument('--user_archer', type=str, default=getenv('USER'),
+                           help='Username on ARCHER')
+    ag_out_ar.add_argument('--dir_archer', type=str, default='test',
+                           help='Subdirectory on ARCHER')
+    return ap.parse_args(args)
+
+
+def _make_dir(d, force=False):
+    if d.exists():
+        if force:
+            rmtree(d)
+            d.makedirs()
+        else:
+            warnings.warn('Directory {d} exists!'.format(d=d))
+    else:
+        d.makedirs()
+
+
+def write_variable(ncds, data, varname,
+                   datatype=None, dimensions=(), fill_value=None):
+    if datatype is None:
+        try:
+            datatype = data.dtype
+        except AttributeError:
+            datatype = type(data)
+
+    ncvar = ncds.createVariable(varname, datatype,
+                                dimensions=dimensions, fill_value=fill_value)
+    ncvar[:] = data
+
+
+def create_const_file(cube, path, axes='zyx'):
+    dt = get_cube_datetimes(cube)[0]
+    file_name = '{dt:%Y%m%d}_cst'.format(dt=dt)
+    ncdims = dict()
+    for ax in axes:
+        try:
+            coord_len = len(cube.coord(axis=ax).points)
+        except iris.exceptions.CoordinateNotFoundError:
+            # TODO: test
+            coord_len = 1
+        dim_name = 'n' + ax
+        if dim_name in ncdims:
+            if coord_len != ncdims[dim_name]:
+                dim_name += '_' + cube.attributes['l_name']
+                ncdims[dim_name] = coord_len
+        else:
+            ncdims[dim_name] = coord_len
+    _pollat = cube.coord_system().grid_north_pole_latitude
+    _pollon = cube.coord_system().grid_north_pole_longitude
+    plevs = cube.coord('pressure').points
+    dummy_levs = np.zeros(plevs.shape)
+
+    with nc.Dataset(path / file_name, mode='w') as ncds:
+        for key, val in ncdims.items():
+            ncds.createDimension(key, val)
+
+        # rotated pole coordinates
+        write_variable(ncds, _pollon, 'pollon')
+        write_variable(ncds, _pollat, 'pollat')
+        # Vertical levels
+        write_variable(ncds, plevs[::-1], 'aklev', dimensions=('nz'))
+        write_variable(ncds, dummy_levs, 'bklev', dimensions=('nz'))
+        write_variable(ncds, dummy_levs, 'aklay', dimensions=('nz'))
+        write_variable(ncds, dummy_levs, 'bklay', dimensions=('nz'))
+        # min/max of longitude and latitude
+        for i, ax in zip(('lon', 'lat'),
+                         ('x',   'y')):
+            _pnts = cube.coord(axis=ax).points
+            for j in ('min', 'max'):
+                _val = getattr(_pnts, j)()
+                write_variable(ncds, _val, i + j)
+            delta = np.diff(_pnts).mean()
+            write_variable(ncds, delta, 'del' + i)
+        # Date and time parameters
+        write_variable(ncds, dt.year - 2000 + 100, 'starty')  # why?
+        write_variable(ncds, dt.month, 'startm')
+        write_variable(ncds, dt.day, 'startd')
+        write_variable(ncds, dt.hour, 'starth')
+        write_variable(ncds, dt.minute, 'starts')
+        # Other parameters
+        write_variable(ncds, 0, 'dattyp')
+        write_variable(ncds, 0, 'datver')
+        write_variable(ncds, 0, 'cstver')
+
+    return file_name
+
+
+def cubelist_to_netcdf(cubelist, ncds, reltime, master_cube='x_wind',
+                       axes='zyx', constants_file_name='2013032412_cst'):
+    # print('cubelist: ', cubelist)
+    master = cubelist.extract(master_cube, strict=True)
+    ncdims = OrderedDict()
+    for ax in axes:
+        for c in cubelist:
+            try:
+                coord_len = len(c.coord(axis=ax).points)
+            except iris.exceptions.CoordinateNotFoundError:
+                # TODO: test
+                coord_len = 1
+            dim_name = 'dim' + ax
+            if dim_name in ncdims:
+                # if coord_len != ncdims[dim_name]:
+                relevant_dims = {k: v for k, v in ncdims.items()
+                                 if k.startswith(dim_name)}
+                if coord_len not in relevant_dims.values():
+                    dim_name += '_' + c.attributes['l_name']
+                    ncdims[dim_name] = coord_len
+            else:
+                ncdims[dim_name] = coord_len
+    ncds.createDimension('time', 1)
+    write_variable(ncds, reltime, 'time', dimensions=('time'))
+    # print(ncds)
+
+    # ncd_keys = []
+    # ncd_vals = []
+    # for key, val in ncdims.items():
+    #     ncd_keys.append(key)
+    #     ncd_vals.append(val)
+
+    for key, val in ncdims.items():
+        ncds.createDimension(key, val)
+
+    for ax in axes:
+        for i in ('min', 'max'):
+            _name = 'dom{}{}'.format(ax, i)
+            _value = getattr(master.coord(axis=ax).points, i)()
+            setattr(ncds, _name, _value)
+    if master.coord(axis='z').name() == 'pressure':
+        ncds.domzmin, ncds.domzmax = ncds.domzmax, ncds.domzmin
+    ncds.constants_file_name = constants_file_name
+    return ncds
+
+
+def cube_to_ncvar(cube, ncds, axes='zyx', stag=(0, 0, 0)):
+    # really ugly solution...
+    vardims = []
+    for key, val in ncds.dimensions.items():
+        ax = key[3]  # dimx, dimy, etc
+        try:
+            _coord_len = len(cube.coord(axis=ax).points)
+        except:
+            _coord_len = 1
+        if _coord_len == val.size:
+            vardims.append(key)
+    vardims = tuple(sorted(vardims, reverse=True))
+    ncvar = ncds.createVariable(cube.attributes['l_name'],
+                                cube.dtype,
+                                vardims)
+    # print(cube.name())
+    # print(cube.shape)
+    # print(vardims)
+    # print([*ncds.dimensions.items()])
+
+    for n, ax in enumerate(axes):
+        for i in ('min', 'max'):
+            _name = '{}{}'.format(ax, i)
+            try:
+                _value = getattr(cube.coord(axis=ax).points, i)()
+                setattr(ncvar, _name, _value)
+                if cube.coord(axis='z').name() == 'pressure':
+                    ncvar.zmin, ncvar.zmax = ncvar.zmax, ncvar.zmin
+            except:
+                pass
+        setattr(ncvar, '{}stag'.format(ax), stag[n])
+
+    ncvar.missing_value = 1e+30
+
+    # ncvar.pollat = cube.coord_system().grid_north_pole_latitude
+    # ncvar.pollon = cube.coord_system().grid_north_pole_longitude
+    # print(cube.name(), cube.attributes['l_name'], cube.shape, vardims)
+
+    ncvar[:] = cube.data
+
+    return ncvar
+
+
+def main(args=None):
+    args = parse_args(args)
+
+    fcst_str = args.fcst_init.strftime('%Y%m%dT%H%MZ')
+    indir = TOPDIR / fcst_str / args.grd_delta / args.name / SUBDIR
+    infiles = indir / 'umnsa_*'
+
+    if args.local:
+        outdir = indir.parent / 'lagranto'
+        _make_dir(outdir, args.force)
+    elif args.user_grace and args.dir_grace:
+        dest = '{}@grace.uea.ac.uk:{}'.format(args.user_grace,
+                                              args.dir_grace)
+    elif args.user_archer and args.dir_archer:
+        dest = '{}@login.archer.uea.ac.uk:{}'.format(args.user_archer,
+                                                     args.dir_archer)
+    else:
+        raise argparse.ArgumentError('Provide output destination')
+
+    pfile_mask = outdir / 'P{dt:%Y%m%d_%H}'
+    sfile_mask = outdir / 'S{dt:%Y%m%d_%H}'
+
+    cubelist = iris.load(infiles)
+
+    cubes_out = iris.cube.CubeList()
+    for ivar, vardict in CUBE_DICT.items():
+        if 'um_name' in vardict:
+            cube = cubelist.extract(vardict['um_name'], strict=True)
+        elif 'stash' in vardict:
+            attr_constr = iris.AttributeConstraint(STASH=vardict['stash'])
+            cube = cubelist.extract(attr_constr, strict=True)
+        else:
+            raise KeyError('Unable to extract cube')
+        cube.attributes['l_name'] = ivar
+        if 'scl' in vardict:
+            cube.data = cube.data * vardict['scl']
+        if 'units' in vardict:
+            cube.units = cf_units.Unit(vardict['units'])
+        if 'regrid_to' in vardict:
+            target = cubelist.extract(vardict['regrid_to'], strict=True)
+            cube = cube.regrid(target, iris.analysis.Linear())
+        cubes_out.append(cube)
+
+    #
+    # Write all data to netCDF files and send them to Grace
+    #
+    cst_file = create_const_file(cubes_out.extract('x_wind', strict=True),
+                                 outdir)
+    if not args.local:
+        rsync_args = ['rsync', '-avqP', outdir / cst_file, dest]
+        cmd = ', '.join(rsync_args)
+        ierr = sb.check_call(rsync_args)
+
+    dtrange = get_cube_datetimes(cubes_out.extract('x_wind', strict=True))
+    for dt1 in tqdm(dtrange):
+        t_delta = (dt1 - dtrange[-1]).total_seconds()/3600
+        # print('Time: {}, Hour_Delta: {}'.format(dt1, t_delta))
+        # assert(dt1 == dt2)
+        t_constr = iris.Constraint(time=dt1)
+        cubes_slice = cubes_out.extract(t_constr)
+        p_cubes = iris.cube.CubeList()
+        s_cubes = iris.cube.CubeList()
+        if UNROTATE_WINDS:
+            u = cubes_slice.extract('x_wind', strict=True)
+            v = cubes_slice.extract('y_wind', strict=True)
+            _u, _v = unrotate_uv(u, v)
+            u.data = _u.data
+            v.data = _v.data
+        for cube_slice in cubes_slice:  # cubes_out:
+            # cube_slice = cube.extract(t_constr)
+            if cube_slice.attributes['l_name'] in PNAMES:
+                p_cubes.append(cube_slice)
+            if cube_slice.attributes['l_name'] in SNAMES:
+                s_cubes.append(cube_slice)
+        # print(p_cubes)
+        # print()
+        # print(s_cubes)
+        # break
+        for ds, fmask, master in zip((p_cubes, s_cubes),
+                                     (pfile_mask, sfile_mask),
+                                     ('x_wind', 'air_temperature')):
+            thefile = fmask.format(dt=dt1)
+
+            with nc.Dataset(thefile, mode='w') as ncds:
+                ncds = cubelist_to_netcdf(ds, ncds, t_delta,
+                                          master_cube=master,
+                                          constants_file_name=cst_file)
+                for _cube in ds:
+                    cube_to_ncvar(_cube, ncds)
+                # print(ncds.variables.keys())
+
+            if not args.local:
+                rsync_args = ['rsync', '-avqP', thefile, dest]
+                cmd = ', '.join(rsync_args)
+                ierr = sb.check_call(rsync_args)
+                if ierr:
+                    print('Command\n{}resulted in\n{}'.format(cmd, ierr))
+                else:
+                    print('Done')
+
+
+if __name__ == '__main__':
+    sys.exit(main())
