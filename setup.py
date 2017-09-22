@@ -13,7 +13,10 @@ REQUIRES = [line.rstrip('\n') for line in open(req_file)]
 with open('README.md', 'r') as f:
     LONG_DESCRIPTION = f.read()
 
-scripts = ['bin/proc_um_output']
+scripts = [
+           'bin/proc_um_output',
+           'bin/um4lagranto',
+          ]
 
 opts = dict(name=NAME,
             maintainer=MAINTAINER,
