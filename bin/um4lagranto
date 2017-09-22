@@ -31,7 +31,7 @@ UNROTATE_WINDS = True
 DEFAULT_GRD_DELTA = 'km2p2'
 
 PNAMES = ('PS', 'U', 'V', 'OMEGA', 'PS')
-SNAMES = ('PS', 'PV', 'T', 'RH')
+SNAMES = ('PS', 'PV', 'T', 'SP')
 
 CUBE_DICT = dict(
                  U=dict(um_name='x_wind'),
@@ -42,7 +42,8 @@ CUBE_DICT = dict(
                  PV=dict(stash='m01s15i229'),
                  # um_name='POTENTIAL VORTICITY ON PRESSURE LEVS'),
                  T=dict(um_name='air_temperature'),
-                 RH=dict(stash='m01s30i206'),
+                 SP=dict(um_name='specific_humidity'),
+                 # RH=dict(stash='m01s30i206'),
                  # um_name='RELATIVE HUMIDITY ON P LEV/UV GRID'),
                 )
 
