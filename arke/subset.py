@@ -53,8 +53,8 @@ def subset_cubelist(cubelist, h_subset):
     for cube in cubelist:
         if 'ilon' in h_subset and 'ilat' in h_subset:
             iy, ix = nearest_xy_grid_2d_index(cube,
-                                              h_subset['ilat'],
-                                              h_subset['ilon'])
+                                              h_subset['ilon'],
+                                              h_subset['ilat'])
         elif 'ix' in h_subset and 'iy' in h_subset:
             iy, ix = h_subset['iy'], h_subset['ix']
         else:
