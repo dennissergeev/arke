@@ -52,9 +52,12 @@ def subset_cubelist(cubelist, h_subset):
     cl = iris.cube.CubeList()
     for cube in cubelist:
         if 'ilon' in h_subset and 'ilat' in h_subset:
-            iy, ix = nearest_xy_grid_2d_index(cube,
-                                              h_subset['ilon'],
-                                              h_subset['ilat'])
+            if h_subset['method'] == 'radius':
+                ix, iy = h_subset['ilon'], h_subset['ilat']
+            else:
+                iy, ix = nearest_xy_grid_2d_index(cube,
+                                                  h_subset['ilon'],
+                                                  h_subset['ilat'])
         elif 'ix' in h_subset and 'iy' in h_subset:
             iy, ix = h_subset['iy'], h_subset['ix']
         else:
