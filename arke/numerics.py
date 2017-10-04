@@ -703,6 +703,7 @@ class AtmosFlow:
         """
         factor = -1 * mconst.egr_factor * self.fcor * mconst.g
         dvdp = cube_deriv(self.wspd, self.zcoord)
+        dvdp.data = abs(dvdp.data)
         res = (self.density * factor.data * AuxCoord(1, units=factor.units)
                * dvdp / self.brunt_vaisala_squared**0.5)
         res.rename('eady_growth_rate')
