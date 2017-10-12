@@ -89,7 +89,8 @@ def specific_humidity_to_mixing_ratio(specific_humidity):
     `iris.cube.Cube`
         Mixing ratio (kg/kg)
     """
-    spechum = specific_humidity.copy().convert_units(1)
+    spechum = specific_humidity.copy()
+    spechum.convert_units(1)
     mixr = spechum / ((spechum)*(-1) + 1)
     return mixr
 
