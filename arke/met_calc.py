@@ -63,18 +63,18 @@ def cape_and_cin(pressure, temperature, specific_humidity):
     `iris.cube.Cube`, scalar
         CIN (J/kg)
     """
-    assert (([i.ndim == 1 for i in pressure,
-                                   temperature,
-                                   specific_humidity]).all(),
-                                   'input cubes should be 1D')
+    if ([i.ndim != 1 for i in (pressure,
+                               temperature,
+                               specific_humidity)]).any():
+        raise NotImplementedError('input cubes should be 1D')
     mixr = specific_humidity_to_mixing_ratio(specific_humidity)
     e = vapor_pressure(pressure, mixr)
     tdew = dewpoint(e)
     # p = pres.data * metunits.units(str(pressure.units))
     # t = temperature.data * metunits.units(str(temperature.units))
     # td = tdew.data * metunits.units(str(tdew.units))
-    pprof = cubehandler(calc.parcel_profile)(p, t[0], td[0])
-    cape, cin = cubehandler(calc.cape_cin)(p, t, td, pprof)
+    pprof = cubehandler(calc.parcel_profile)(pressure, temperature[0], tdew[0])
+    cape, cin = cubehandler(calc.cape_cin)(pressure, temperature, tdew, pprof)
     return cape, cin
 
 
