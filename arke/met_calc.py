@@ -24,15 +24,18 @@ def cubehandler(f):
                 nargs.append(arg)
         out = f(*nargs, **kwds)
         if isinstance(out, (tuple, list, set)):
+            res = []
             for iout in out:
-                res = Cube(iout,
-                           dim_coords_and_dims=[(c, a_cube.coord_dims(c))
-                                                for c in a_cube.dim_coords],
-                           aux_coords_and_dims=[(c, a_cube.coord_dims(c))
-                                                for c in a_cube.aux_coords],
-                           units=(iout.units.__str__()
-                                  .replace(' ** ', '^')
-                                  .replace(' * ', ' ')))
+                ires = Cube(iout,
+                            dim_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                                 for c in a_cube.dim_coords],
+                            aux_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                                 for c in a_cube.aux_coords],
+                            units=(iout.units.__str__()
+                                   .replace(' ** ', '^')
+                                   .replace(' * ', ' ')))
+                res.append(ires)
+            res = tuple(res)
         else:
             res = Cube(out,
                        dim_coords_and_dims=[(c, a_cube.coord_dims(c))
