@@ -23,15 +23,26 @@ def cubehandler(f):
             else:
                 nargs.append(arg)
         out = f(*nargs, **kwds)
-        cube_out = Cube(out,
-                        dim_coords_and_dims=[(c, a_cube.coord_dims(c))
-                                             for c in a_cube.dim_coords],
-                        aux_coords_and_dims=[(c, a_cube.coord_dims(c))
-                                             for c in a_cube.aux_coords],
-                        units=(out.units.__str__()
-                               .replace(' ** ', '^')
-                               .replace(' * ', ' ')))
-        return cube_out
+        if isinstance(out, (tuple, list, set)):
+            for iout in out:
+                res = Cube(iout,
+                           dim_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                                for c in a_cube.dim_coords],
+                           aux_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                                for c in a_cube.aux_coords],
+                           units=(iout.units.__str__()
+                                  .replace(' ** ', '^')
+                                  .replace(' * ', ' ')))
+        else:
+            res = Cube(out,
+                       dim_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                            for c in a_cube.dim_coords],
+                       aux_coords_and_dims=[(c, a_cube.coord_dims(c))
+                                            for c in a_cube.aux_coords],
+                       units=(out.units.__str__()
+                              .replace(' ** ', '^')
+                              .replace(' * ', ' ')))
+        return res
     return wrapper
 
 
