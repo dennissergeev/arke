@@ -81,14 +81,21 @@ def cape_and_cin(pressure, temperature, specific_humidity):
                                temperature,
                                specific_humidity)]).any():
         raise NotImplementedError('input cubes should be 1D')
+    if pressure.data[0] < pressure.data[-1]:
+        # reverse arrays
+        zdir = slice(None, None, -1)
+    else:
+        zdir = slice(None)
     mixr = specific_humidity_to_mixing_ratio(specific_humidity)
     e = vapor_pressure(pressure, mixr)
     tdew = dewpoint(e)
-    # p = pres.data * metunits.units(str(pressure.units))
-    # t = temperature.data * metunits.units(str(temperature.units))
-    # td = tdew.data * metunits.units(str(tdew.units))
-    pprof = cubehandler(calc.parcel_profile)(pressure, temperature[0], tdew[0])
-    cape, cin = cubehandler(calc.cape_cin)(pressure, temperature, tdew, pprof)
+    pres = pressure[zdir]
+    temp = temperature[zdir]
+    tdew = tdew[zdir]
+    pprof = cubehandler(calc.parcel_profile)(pres, temp[0], tdew[0])
+    cape, cin = cubehandler(calc.cape_cin)(pres, temp, tdew, pprof)
+    cape.rename('atmosphere_convective_available_potential_energy')
+    cin.rename('atmosphere_convective_inhibition')
     return cape, cin
 
 
