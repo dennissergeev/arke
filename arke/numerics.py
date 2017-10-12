@@ -222,6 +222,13 @@ class AtmosFlow:
                     if rot_name in [i.name() for i in cube.coords(axis=ax)]:
                         cube.remove_coord(rot_name)
 
+            try:
+                _dx = thecube.attributes['um_res'].to_flt('m')
+            except:
+                _dx = 1.
+            self.dx = Cube(_dx, units='m')
+            self.dy = Cube(_dx, units='m')
+
         # Non-spherical coords?
         # self.horiz_cs = thecube.coord(axis='x', dim_coords=True).coord_system
         self.horiz_cs = thecube.coord_system()
@@ -708,4 +715,18 @@ class AtmosFlow:
                * dvdp / self.brunt_vaisala_squared**0.5)
         res.rename('eady_growth_rate')
         res.convert_units('s-1')
+        return res
+
+    @cached_property
+    def kinematic_frontogenesis(self):
+        r"""
+        2D Kinematic frontogenesis from MetPy package
+
+        .. math::
+            F=\frac{1}{2}\left|\nabla \theta\right|[D cos(2\beta)-\delta]
+        """
+        res = mcalc.frontogenesis(self.theta, self.u, self.v,
+                                  self.dx, self.dy, dim_order='yx')
+        res.rename('kinematic_frontogenesis')
+        res.convert_units('K m-1 s-1')
         return res

@@ -7,6 +7,7 @@ Taken from metpy.calc submodule and decorated to handle iris cubes
 from functools import wraps
 
 from iris.cube import Cube
+import cf_units
 from metpy import calc
 import metpy.units as metunits
 
@@ -18,7 +19,12 @@ def cubehandler(f):
         for arg in args:
             if isinstance(arg, Cube):
                 a_cube = arg
-                q = arg.data * metunits.units(str(arg.units))
+                for ut_format in set(cf_units.UT_FORMATS):
+                    try:
+                        un = metunits.units(arg.units.format(ut_format))
+                    except:
+                        pass
+                q = arg.data * un
                 nargs.append(q)
             else:
                 nargs.append(arg)
@@ -54,6 +60,7 @@ potential_temperature = cubehandler(calc.potential_temperature)
 equivalent_potential_temperature = cubehandler(calc.equivalent_potential_temperature)  # noqa
 vapor_pressure = cubehandler(calc.vapor_pressure)
 dewpoint = cubehandler(calc.dewpoint)
+frontogenesis = cubehandler(calc.frontogenesis)
 
 
 def cape_and_cin(pressure, temperature, specific_humidity):
