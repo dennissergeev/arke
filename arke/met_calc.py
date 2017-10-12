@@ -77,9 +77,9 @@ def cape_and_cin(pressure, temperature, specific_humidity):
     `iris.cube.Cube`, scalar
         CIN (J/kg)
     """
-    if ([i.ndim != 1 for i in (pressure,
-                               temperature,
-                               specific_humidity)]).any():
+    if any([i.ndim != 1 for i in (pressure,
+                                  temperature,
+                                  specific_humidity)]):
         raise NotImplementedError('input cubes should be 1D')
     if pressure.data[0] < pressure.data[-1]:
         # reverse arrays
