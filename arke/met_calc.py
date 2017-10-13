@@ -19,7 +19,9 @@ def cubehandler(f):
         a_cube = None
         for arg in args:
             if isinstance(arg, Cube):
-                if a_cube is None:
+                if arg.ndim > 0:
+                    a_cube = arg
+                elif a_cube is None:
                     a_cube = arg
                 for ut_format in set(cf_units.UT_FORMATS):
                     try:
