@@ -40,7 +40,7 @@ def cubehandler(f):
         if isinstance(out, (tuple, list, set)):
             res = []
             for iout in out:
-                ires = Cube(iout,
+                ires = Cube(iout.magnitude,
                             dim_coords_and_dims=[(c, a_cube.coord_dims(c))
                                                  for c in a_cube.dim_coords],
                             aux_coords_and_dims=[(c, a_cube.coord_dims(c))
@@ -51,7 +51,7 @@ def cubehandler(f):
                 res.append(ires)
             res = tuple(res)
         else:
-            res = Cube(out,
+            res = Cube(out.magnitude,
                        dim_coords_and_dims=[(c, a_cube.coord_dims(c))
                                             for c in a_cube.dim_coords],
                        aux_coords_and_dims=[(c, a_cube.coord_dims(c))
