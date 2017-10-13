@@ -29,8 +29,8 @@ def cubehandler(f):
                         un = metunits.units(arg.units.format(ut_format))
                     except:
                         pass
-                if np.ma.is_masked(args.data):
-                    q = metunits.masked_array(args.data, data_units=un)
+                if np.ma.is_masked(arg.data):
+                    q = metunits.masked_array(arg.data, data_units=un)
                 else:
                     q = arg.data * un
                 nargs.append(q)
