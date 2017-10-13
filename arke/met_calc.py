@@ -10,6 +10,7 @@ from iris.cube import Cube
 import cf_units
 from metpy import calc
 import metpy.units as metunits
+import numpy as np
 
 
 def cubehandler(f):
