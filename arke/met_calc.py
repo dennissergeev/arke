@@ -16,9 +16,11 @@ def cubehandler(f):
     @wraps(f)
     def wrapper(*args, **kwds):
         nargs = []
+        a_cube = None
         for arg in args:
             if isinstance(arg, Cube):
-                a_cube = arg
+                if a_cube is None:
+                    a_cube = arg
                 for ut_format in set(cf_units.UT_FORMATS):
                     try:
                         un = metunits.units(arg.units.format(ut_format))
