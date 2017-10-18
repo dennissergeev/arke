@@ -60,7 +60,7 @@ def prepare_map(vrbls_lists, geoax=False, axsize=8):
     if geoax:
         lon1, lon2, lat1, lat2 = [[] for _ in range(4)]
         for icube in vrbls:
-            if isinstance(icube, list):
+            if isinstance(icube, (list, tuple)):
                 icube = icube[0]
             lons, lats = unrotate_xy_grids(icube)
             if hasattr(icube.data, 'mask'):
