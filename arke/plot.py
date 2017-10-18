@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import AxesGrid
 import numpy as np
 
-from .grid import unrotate_xy_grids
+from .grid import unrotate_lonlat_grids
 from .cart import lcc_map_grid
 
 
@@ -62,7 +62,7 @@ def prepare_map(vrbls_lists, geoax=False, axsize=8):
         for icube in vrbls:
             if isinstance(icube, (list, tuple)):
                 icube = icube[0]
-            lons, lats = unrotate_xy_grids(icube)
+            lons, lats = unrotate_lonlat_grids(icube)
             if hasattr(icube.data, 'mask'):
                 _mask = icube.data.mask
                 lons = np.ma.masked_where(_mask, lons)
