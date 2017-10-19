@@ -6,17 +6,15 @@ Prepare MetUM LAM output for the Lagranto trajectory model
 import argparse
 import cf_units
 from collections import OrderedDict
-from datetime import datetime
 import iris
+import json
 import netCDF4 as nc
 import numpy as np
-from os import getenv
 from path import Path
 from shutil import rmtree
 import subprocess as sb
 import sys
 from tqdm import tqdm
-import warnings
 #
 from arke.grid import unrotate_uv
 from arke.coords import get_cube_datetimes
@@ -24,74 +22,16 @@ from arke.coords import get_cube_datetimes
 iris.FUTURE.netcdf_promote = True
 iris.FUTURE.cell_datetime_objects = True
 
-EXTDIR = Path('/media') / getenv('USER') / 'Elements'
-TOPDIR = EXTDIR / 'phd' / 'modelling' / 'UM' / 'exp_results'
-SUBDIR = 'plev'
-UNROTATE_WINDS = True
-DEFAULT_GRD_DELTA = 'km2p2'
-
-PNAMES = ('PS', 'U', 'V', 'OMEGA', 'PS')
-SNAMES = ('PS', 'PV', 'T', 'SP')
-
-CUBE_DICT = dict(
-                 U=dict(um_name='x_wind'),
-                 V=dict(um_name='y_wind'),
-                 OMEGA=dict(um_name='lagrangian_tendency_of_air_pressure'),
-                 PS=dict(um_name='air_pressure_at_sea_level',
-                         scl=0.01, units='hPa', regrid_to='x_wind'),
-                 PV=dict(stash='m01s15i229'),
-                 # um_name='POTENTIAL VORTICITY ON PRESSURE LEVS'),
-                 T=dict(um_name='air_temperature'),
-                 SP=dict(um_name='specific_humidity'),
-                 # RH=dict(stash='m01s30i206'),
-                 # um_name='RELATIVE HUMIDITY ON P LEV/UV GRID'),
-                )
-
-
-def valid_date(s):
-    try:
-        return datetime.strptime(s, '%Y%m%dT%H%MZ')
-    except ValueError:
-        msg = "Not a valid date: '{0}'.".format(s)
-        raise argparse.ArgumentTypeError(msg)
-
 
 def parse_args(args=None):
     ap = argparse.ArgumentParser(__file__,
                                  description=__doc__,
                                  formatter_class=argparse.
                                  ArgumentDefaultsHelpFormatter,
-                                 epilog='Example of use:\ncoming soon...')
-    ag_in = ap.add_argument_group(title='Input parameters')
-    ag_in.add_argument('-n', '--name', type=str, required=True,
-                       help='Case name (e.g. "ctrl")')
-    ag_in.add_argument('--fcst_init', required=True,
-                       type=valid_date,
-                       help='Forecast reference time (YYYYmmddTHHMMZ)')
-    ag_in.add_argument('--grd_delta', type=str, default=DEFAULT_GRD_DELTA,
-                       help='MetUM grid spacing')
-    # ap.add_argument('-p', '--paths', type=str, nargs='*',
-    #                 help='Directory(ies) with input data')
-
-    # ag_out = ap.add_mutually_exclusive_group()
-    ag_out_loc = ap.add_argument_group(title='Option 1: Local')
-    ag_out_loc.add_argument('-l', '--local', action='store_true',
-                            default=False,
-                            help='Save to a subfolder of the input directory')
-    ag_out_loc.add_argument('-f', '--force', action='store_true',
-                            default=False,
-                            help='Overwrite output directory')
-    ag_out_gr = ap.add_argument_group(title='Option 2: Grace')
-    ag_out_gr.add_argument('--user_grace', type=str, default=getenv('USER'),
-                           help='Username on Grace')
-    ag_out_gr.add_argument('--dir_grace', type=str, default='test',
-                           help='Subdirectory on Grace')
-    ag_out_ar = ap.add_argument_group(title='Option 3: ARCHER')
-    ag_out_ar.add_argument('--user_archer', type=str, default=getenv('USER'),
-                           help='Username on ARCHER')
-    ag_out_ar.add_argument('--dir_archer', type=str, default='test',
-                           help='Subdirectory on ARCHER')
-    return ap.parse_args(args)
+                                 epilog=('Example of use:\n'
+                                         'um4lagranto /path/to/config/file'))
+    ap.add_argument('configs', type=str,
+                    help='Path to config JSON file')
 
 
 def _make_dir(d, force=False):
@@ -99,8 +39,6 @@ def _make_dir(d, force=False):
         if force:
             rmtree(d)
             d.makedirs()
-        else:
-            warnings.warn('Directory {d} exists!'.format(d=d))
     else:
         d.makedirs()
 
@@ -267,21 +205,27 @@ def cube_to_ncvar(cube, ncds, axes='zyx', stag=(0, 0, 0)):
 def main(args=None):
     args = parse_args(args)
 
-    fcst_str = args.fcst_init.strftime('%Y%m%dT%H%MZ')
-    indir = TOPDIR / fcst_str / args.grd_delta / args.name / SUBDIR
-    infiles = indir / 'umnsa_*'
+    with Path(args.configs).open('r') as fp:
+        conf = json.load(fp)
 
-    if args.local:
-        outdir = indir.parent / 'lagranto'
-        _make_dir(outdir, args.force)
-    elif args.user_grace and args.dir_grace:
-        dest = '{}@grace.uea.ac.uk:{}'.format(args.user_grace,
-                                              args.dir_grace)
-    elif args.user_archer and args.dir_archer:
-        dest = '{}@login.archer.uea.ac.uk:{}'.format(args.user_archer,
-                                                     args.dir_archer)
+    indir = Path(conf['paths']['input_dir'])
+    infiles = indir / conf['file_wildcard']
+    output_mode = conf['paths']['output_mode']
+    if output_mode == 'local':
+        outdir = Path(conf['paths']['output_dir'])
+        _make_dir(outdir, conf['overwrite'])
     else:
-        raise argparse.ArgumentError('Provide output destination')
+        dest = ''
+        for rd in conf.get('remote_dests', {}).values():
+            if rd.get('switch', False):
+                dest = f'{rd["user"]}@{rd["host"]}:{rd["path"]}'
+        if not dest:
+            # TODO: regex check?
+            raise ValueError('Remote destination is not given or is incorrect')
+
+    PNAMES = conf['names']['PNAMES']
+    SNAMES = conf['names']['SNAMES']
+    um_params = conf['um_params']
 
     pfile_mask = outdir / 'P{dt:%Y%m%d_%H}'
     sfile_mask = outdir / 'S{dt:%Y%m%d_%H}'
@@ -289,7 +233,7 @@ def main(args=None):
     cubelist = iris.load(infiles)
 
     cubes_out = iris.cube.CubeList()
-    for ivar, vardict in CUBE_DICT.items():
+    for ivar, vardict in um_params.items():
         if 'um_name' in vardict:
             cube = cubelist.extract(vardict['um_name'], strict=True)
         elif 'stash' in vardict:
@@ -312,7 +256,7 @@ def main(args=None):
     #
     cst_file = create_const_file(cubes_out.extract('x_wind', strict=True),
                                  outdir)
-    if not args.local:
+    if not output_mode != 'local':
         rsync_args = ['rsync', '-avqP', outdir / cst_file, dest]
         cmd = ', '.join(rsync_args)
         ierr = sb.check_call(rsync_args)
@@ -326,7 +270,7 @@ def main(args=None):
         cubes_slice = cubes_out.extract(t_constr)
         p_cubes = iris.cube.CubeList()
         s_cubes = iris.cube.CubeList()
-        if UNROTATE_WINDS:
+        if conf['unrotate_winds']:
             u = cubes_slice.extract('x_wind', strict=True)
             v = cubes_slice.extract('y_wind', strict=True)
             _u, _v = unrotate_uv(u, v)

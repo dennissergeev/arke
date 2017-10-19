@@ -1,0 +1,57 @@
+{
+  "output_mode": "local",
+  "file_wildcard": "umnsa_*plev*",
+  "overwrite": true,
+  "paths": {
+    "input_dir": "/path/to/files",
+    "output_dir": "/path/to/store/output"
+  },
+  "unrotate_winds": true,
+  "names": {
+    "PNAMES": ["PS", "U", "V", "OMEGA", "PS"],
+    "SNAMES": ["PS", "PV", "T", "SP"]
+  },
+  "um_params": {
+    "U": {
+      "um_name": "x_wind"
+    },
+    "V": {
+      "um_name": "y_wind"
+    },
+    "OMEGA": {
+      "um_name": "lagrangian_tendency_of_air_pressure"
+    },
+    "PS": {
+      "um_name": "air_pressure_at_sea_level",
+      "scl": 0.01,
+      "units": "hPa",
+      "regrid_to": "x_wind"
+    },
+    "PV": {
+      "stash": "m01s15i229"
+    },
+    "T": {
+      "um_name": "air_temperature"
+    },
+    "SP": { 
+      "um_name": "specific_humidity"
+    },
+    "RH": {
+      "stash": "m01s30i206"
+    }
+  },
+  "remote_dests": {
+    "somedest": {
+      "switch": false,
+      "user": "myusername",
+      "host": "some.host.ac.uk",
+      "path": "/path/to/folder"
+    },
+    "anotherdest": {
+      "switch": false,
+      "user": "myusername",
+      "host": "another.host.ac.uk",
+      "path": "/path/to/folder"
+    }
+  }
+}
