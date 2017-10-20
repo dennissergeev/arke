@@ -32,6 +32,7 @@ def parse_args(args=None):
                                          'um4lagranto /path/to/config/file'))
     ap.add_argument('configs', type=str,
                     help='Path to config JSON file')
+    return ap.parse_args(args)
 
 
 def _make_dir(d, force=False):
@@ -210,7 +211,7 @@ def main(args=None):
 
     indir = Path(conf['paths']['input_dir'])
     infiles = indir / conf['file_wildcard']
-    output_mode = conf['paths']['output_mode']
+    output_mode = conf['output_mode']
     if output_mode == 'local':
         outdir = Path(conf['paths']['output_dir'])
         _make_dir(outdir, conf['overwrite'])
@@ -234,29 +235,30 @@ def main(args=None):
 
     cubes_out = iris.cube.CubeList()
     for ivar, vardict in um_params.items():
-        if 'um_name' in vardict:
-            cube = cubelist.extract(vardict['um_name'], strict=True)
-        elif 'stash' in vardict:
-            attr_constr = iris.AttributeConstraint(STASH=vardict['stash'])
-            cube = cubelist.extract(attr_constr, strict=True)
-        else:
-            raise KeyError('Unable to extract cube')
-        cube.attributes['l_name'] = ivar
-        if 'scl' in vardict:
-            cube.data = cube.data * vardict['scl']
-        if 'units' in vardict:
-            cube.units = cf_units.Unit(vardict['units'])
-        if 'regrid_to' in vardict:
-            target = cubelist.extract(vardict['regrid_to'], strict=True)
-            cube = cube.regrid(target, iris.analysis.Linear())
-        cubes_out.append(cube)
+        if ivar in PNAMES + SNAMES:
+            if 'um_name' in vardict:
+                cube = cubelist.extract(vardict['um_name'], strict=True)
+            elif 'stash' in vardict:
+                attr_constr = iris.AttributeConstraint(STASH=vardict['stash'])
+                cube = cubelist.extract(attr_constr, strict=True)
+            else:
+                raise KeyError('Unable to extract cube')
+            cube.attributes['l_name'] = ivar
+            if 'scl' in vardict:
+                cube.data = cube.data * vardict['scl']
+            if 'units' in vardict:
+                cube.units = cf_units.Unit(vardict['units'])
+            if 'regrid_to' in vardict:
+                target = cubelist.extract(vardict['regrid_to'], strict=True)
+                cube = cube.regrid(target, iris.analysis.Linear())
+            cubes_out.append(cube)
 
     #
     # Write all data to netCDF files and send them to Grace
     #
     cst_file = create_const_file(cubes_out.extract('x_wind', strict=True),
                                  outdir)
-    if not output_mode != 'local':
+    if output_mode != 'local':
         rsync_args = ['rsync', '-avqP', outdir / cst_file, dest]
         cmd = ', '.join(rsync_args)
         ierr = sb.check_call(rsync_args)
@@ -299,7 +301,7 @@ def main(args=None):
                     cube_to_ncvar(_cube, ncds)
                 # print(ncds.variables.keys())
 
-            if not args.local:
+            if output_mode != 'local':
                 rsync_args = ['rsync', '-avqP', thefile, dest]
                 cmd = ', '.join(rsync_args)
                 ierr = sb.check_call(rsync_args)
