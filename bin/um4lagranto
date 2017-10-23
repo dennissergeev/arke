@@ -188,6 +188,7 @@ def cube_to_ncvar(cube, ncds, axes='zyx', stag=(0, 0, 0)):
                 setattr(ncvar, _name, _value)
                 if cube.coord(axis='z').name() == 'pressure':
                     ncvar.zmin, ncvar.zmax = ncvar.zmax, ncvar.zmin
+                    cube.data = cube.data[::-1, ...]  # TODO: more flexible
             except:
                 pass
         setattr(ncvar, '{}stag'.format(ax), stag[n])
