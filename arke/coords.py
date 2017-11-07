@@ -15,16 +15,25 @@ REDUNDANT_COORDS = ('forecast_period', )
 
 
 def get_cube_datetimes(cube):
+    """Get a list of `iris.cube.Cube`'s time points as `datetime.datetime`s """
     return cube.coord('time').units.num2date(cube.coord('time').points)
 
 
 def nearest_plevel(cube, pval):
+    """
+    Find the value nearest to the given `pval`
+    among points of pressure coordinate of a given cube
+    """
     pcoord = cube.coord('pressure')
     i = pcoord.nearest_neighbour_index(pval)
     return pcoord.points[i]
 
 
 def nearest_tval(cube, dt):
+    """
+    Find the value nearest to the given `dt` (`datetime.datetime` obj)
+    among points of time coordinate of a given cube
+    """
     timevar = cube.coord('time')
     itime = timevar.nearest_neighbour_index(timevar.units.date2num(dt))
     return timevar.units.num2date(timevar.points[itime])
@@ -49,32 +58,62 @@ def add_coord_system(src_cube, cs=None, inplace=False):
         return cube
 
 
-def get_model_real_coords(vrbl, dims='tzyx'):
-    """ Retrieve 'physical' coordinates of """
+def get_model_real_coords(cube, dims='tzyx', subtract360=True):
+    """
+    Retrieve 'model' coordinates of a cube along given dimensions
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        iris cube with coordinates
+    dims: str, optional
+        dimensions (axes) to do the search for
+    subtract360: bool, optional (default True)
+        subtract 360 from horizontal coordinates if they are all > 180
+    Returns
+    -------
+    list
+        'model' coordinates
+    """
     model_coords = []
     for iax in dims:
-        idim = vrbl.coords(axis=iax)
+        idim = cube.coords(axis=iax)
         if len(idim) > 1:
             for icoord in idim:
                 if icoord.name() in PHYS_COORDS[iax]:
-                    if iax in 'xy' and all(icoord.points > 180.0):
+                    if iax in 'xy' and all(icoord.points > 180.0)
+                      and subtract360:
                         icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
         elif len(idim) == 1:
-            if iax in 'xy' and all(idim[0].points > 180.0):
+            if iax in 'xy' and all(idim[0].points > 180.0) and subtract360:
                 idim[0].points = idim[0].points - 360.0
             model_coords.append(idim[0])
 
-    if len(vrbl.shape) != len(model_coords):
+    if len(cube.shape) != len(model_coords):
         print('WARNING!'
               'Number of coordinates does not match the input variable shape!')
     return model_coords
 
 
-def get_phys_coord(vrbl, axis, subtract360=True):
-    """ Retrieve 'physical' coordinates of """
+def get_phys_coord(cube, axis, subtract360=True):
+    """
+    Retrieve a 'physical' coordinate along the given axis
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        iris cube with coordinates
+    axis: str, optional
+        dimension to do the search for
+    subtract360: bool, optional (default True)
+        subtract 360 from horizontal coordinates if they are all > 180
+    Returns
+    -------
+    iris.coord.DimCoord
+        'physical' coordinate
+    """
     result = None
-    coords = vrbl.coords(axis=axis)
+    coords = cube.coords(axis=axis)
     for icoord in coords:
         if icoord.name() in PHYS_COORDS[axis]:
             if axis in 'xy' and all(icoord.points > 180.0) and subtract360:
@@ -86,6 +125,10 @@ def get_phys_coord(vrbl, axis, subtract360=True):
 
 
 def pres_coord_to_cube(other_cube):
+    """
+    Convert pressure coordinate points to a cube of the same dimension as
+    the given cube
+    """
     pcoord = other_cube.coord('pressure')
     dim_map = other_cube.coord_dims('pressure')
     p_data = pcoord.points
