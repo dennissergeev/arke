@@ -48,6 +48,7 @@ def get_cube(cubelist, cube_name, lazy=True):
 
 
 def clean_call(cube, field, filename):
+    """Clean some of the cube coordinates when loading data"""
     try:
         for factory in cube.aux_factories:
             cube.remove_aux_factory(factory)
