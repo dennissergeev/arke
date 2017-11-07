@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Collection of functions for cartographic plotting.
-Based on cartopy.
 """
 import cartopy
 import cartopy.crs as ccrs
@@ -15,7 +14,7 @@ import shapely.geometry as sgeom
 best_ticks = [1, 2, 5, 10, 15, 20, 30, 50]
 
 
-def find_side(ls, side):
+def _find_side(ls, side):
     """
     Given a shapely LineString which is assumed to be rectangular, return the
     line corresponding to a given side of the rectangle.
@@ -29,7 +28,7 @@ def find_side(ls, side):
     return sgeom.LineString(points[side])
 
 
-def lambert_xticks(ax, ticks):
+def _lambert_xticks(ax, ticks):
     """Draw ticks on the bottom x-axis of a Lambert Conformal projection."""
     def _te(xy):
         return xy[0]
@@ -43,7 +42,7 @@ def lambert_xticks(ax, ticks):
                         for xtick in xticklabels])
 
 
-def lambert_yticks(ax, ticks):
+def _lambert_yticks(ax, ticks):
     """Draw ticks on the left y-axis of a Lamber Conformal projection."""
     def _te(xy):
         return xy[1]
@@ -64,7 +63,7 @@ def _lambert_ticks(ax, ticks, tick_location, line_constructor, tick_extractor):
     """
     outline_patch = sgeom.LineString(ax.outline_patch.get_path().
                                      vertices.tolist())
-    axis = find_side(outline_patch, tick_location)
+    axis = _find_side(outline_patch, tick_location)
     n_steps = 30
     extent = ax.get_extent(ccrs.PlateCarree())
     _ticks = []
@@ -92,19 +91,52 @@ def _lambert_ticks(ax, ticks, tick_location, line_constructor, tick_extractor):
     return _ticks, ticklabels
 
 
-def label_map(ax, toponyms={}, transform=None):
+def label_map(ax, toponyms, transform=None, **text_kw):
+    """
+    Put labels on a map
+
+    Parameters
+    ----------
+    ax: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes to put names on
+    toponyms: list
+        list of dictionaries containing `lon`, `lat`, `name` keys
+        defining the longitude and latitude of each `name` toponym
+    transform: matplotlib.transforms.BboxTransformTo, optional
+        axes transform; set to ax.transAxes by default
+    """
     if transform is None:
         transform = ax.transAxes
     for i in toponyms:
         txt = ax.text(i['lon'], i['lat'], i['name'],
                       transform=transform,
-                      color='k', fontsize=20, fontweight='bold',
-                      ha='center', va='center')
-        txt.set_zorder(200)
+                      **text_kw)
+        txt.set_zorder(20)
 
 
 def pc_map(fig, subplot_grd=111,
            projection=ccrs.PlateCarree(), coast=None, extent=None):
+    """
+    Create axes with the Plate Carree projection in a given figure
+
+    Parameters
+    ----------
+    fig: matplotlib.figure.Figure
+         matplotlib figure
+    subplot_grd: int, optional
+        3-digit integer describing the position of the subplot
+        default: 111
+    projection: str or cartopy.crs.CRS, optional
+        projection class of the axes, default: cartopy.crs.PlateCarree
+    coast: str or dict, optional
+        parameters to draw a coastline, see `add_coastline()` for details
+    extent: sequence, optional
+        extent (x0, x1, y0, y1) of the map in the given coordinate projection
+    Returns
+    -------
+    cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes with the Plate Caree projection
+    """
     ax = fig.add_subplot(subplot_grd, projection=projection)
 
     gl = ax.gridlines(draw_labels=True)
@@ -118,7 +150,7 @@ def pc_map(fig, subplot_grd=111,
 
 
 def get_xy_ticks(ticks):
-    # Define gridline locations
+    """Define gridline locations"""
     try:
         if len(ticks) == 2:
             try:
@@ -144,6 +176,31 @@ def get_xy_ticks(ticks):
 
 def lcc_map(fig, subplot_grd=111, clon=None, clat=None, extent=None,
             coast=None, ticks=None):
+    """
+    Create axes the Lambert Conformal Conic (LCC) in a given figure
+
+    Parameters
+    ----------
+    fig: matplotlib.figure.Figure
+         matplotlib figure
+    subplot_grd: int, optional
+        3-digit integer describing the position of the subplot
+        default: 111
+    clon: float
+        central longitude of LCC projection
+    clat: float
+        central latitude of LCC projection
+    coast: str or dict, optional
+        parameters to draw a coastline, see `add_coastline()` for details
+    extent: sequence, optional
+        extent (x0, x1, y0, y1) of the map in the given coordinate projection
+    ticks: sequence, optional
+        see `get_xy_ticks()` for details
+    Returns
+    -------
+    cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes with the LCC projection
+    """
     # Create a Lambert Conformal projection:
     proj = ccrs.LambertConformal(central_longitude=clon, central_latitude=clat)
 
@@ -163,23 +220,81 @@ def lcc_map(fig, subplot_grd=111, clon=None, clat=None, extent=None,
         # Label the end-points of the gridlines using the custom tick makers:
         ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
         ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-        lambert_xticks(ax, xticks)
-        lambert_yticks(ax, yticks)
+        _lambert_xticks(ax, xticks)
+        _lambert_yticks(ax, yticks)
 
     return ax
 
 
-# soon to be included in cartopy
 class GeoAxesGrid(AxesGrid):
+    """
+    A subclass of :class:`mpl_toolkits.axes_grid1.AxesGrid` representing
+    a grid of maps with the same projection :class:`~cartopy.crs.Projection`.
+    .. note::
+       * `axes_class` is defined automatically
+       * The :class:`AxesGrid` built-in labelling is always switched off,
+         and instead a standard procedure of creating
+         grid lines and labels should be used.
+    """
     def __init__(self, fig, rect, nrows_ncols, projection, **axesgrid_kw):
-        axes_class = (GeoAxes, dict(map_projection=projection))
-        axesgrid_kw['label_mode'] = ''
+        """
+        Build a :class:`GeoAxesGrid` instance with a grid nrows*ncols
+        :class:`GeoAxes` with a projection :class:`~cartopy.crs.Projection`
+        in :class:`~matplotlib.figure.Figure` *fig* with
+        *rect=[left, bottom, width, height]* (in
+        :class:`~matplotlib.figure.Figure` coordinates) or
+        the subplot position code (e.g., "121").
+        Kwargs:
+          Keyword           Default   Description
+          ================  ========  =========================================
+          direction         "row"     [ "row" | "column" ]
+          axes_pad          0.02      float| pad between axes given in inches
+                                      or tuple-like of floats,
+                                      (horizontal padding, vertical padding)
+          add_all           True      [ True | False ]
+          share_all         False     [ True | False ]
+          aspect            True      [ True | False ]
+          cbar_mode         None      [ "each" | "single" | "edge" ]
+          cbar_location     "right"   [ "left" | "right" | "bottom" | "top" ]
+          cbar_pad          None
+          cbar_size         "5%"
+          cbar_set_cax      True      [ True | False ]
+          ================  ========  =========================================
+        *cbar_set_cax* : if True, each axes in the grid has a cax
+          attribute that is bind to associated cbar_axes.
+        """
+        axesgrid_kw['axes_class'] = (GeoAxes, dict(map_projection=projection))
+        axesgrid_kw['label_mode'] = ''  # note the empty label_mode
         super(GeoAxesGrid, self).__init__(fig, rect, nrows_ncols,
-                                          axes_class=axes_class, **axesgrid_kw)
+                                          **axesgrid_kw)
 
 
-def lcc_map_grid(fig, nrows_ncols, clon=None, clat=None, extent=None,
+def lcc_map_grid(fig, nrows_ncols, clon, clat, extent=None,
                  coast=None, ticks=None, **axesgrid_kw):
+    """
+    Build an `AxesGrid` instance with a grid `nrows_ncols` with
+    the Lambert Conformal Conic (LCC) projection and `**axesgrid_kw` parameters
+
+    Parameters
+    ----------
+    fig: matplotlib.figure.Figure
+        parent figure
+    nrows_ncols: tuple of int
+        N rows and N cols
+    clon: float
+        central longitude of LCC projection
+    clat: float
+        central latitude of LCC projection
+    coast: str or dict, optional
+        parameters to draw a coastline, see `add_coastline()` for details
+    extent: sequence, optional
+        extent (x0, x1, y0, y1) of the map in the given coordinate projection
+    ticks: sequence, optional
+        see `get_xy_ticks()` for details
+    Returns
+    -------
+    GeoAxesGrid
+    """
     proj = ccrs.LambertConformal(central_longitude=clon, central_latitude=clat)
     axgr = GeoAxesGrid(fig, 111, nrows_ncols, projection=proj, **axesgrid_kw)
     if ticks is not None:
@@ -199,13 +314,27 @@ def lcc_map_grid(fig, nrows_ncols, clon=None, clat=None, extent=None,
             # Label the end-points of the gridlines using the tick makers:
             ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
             ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
-            lambert_xticks(ax, xticks)
-            lambert_yticks(ax, yticks)
+            _lambert_xticks(ax, xticks)
+            _lambert_yticks(ax, yticks)
 
     return axgr
 
 
 def add_coastline(ax, coast):
+    """
+    Add coast outline to a given GeoAxes
+
+    Parameters
+    ----------
+    ax: cartopy.mpl.geoaxes.GeoAxesSubplot
+        axes to add coastlines
+    coast: str or dict
+        If str object is given it assumed to be a named `scale`
+        (resolution to use from the Natural Earth dataset,
+         currently can be one of "110m", "50m", and "10m").
+        If dict is given, it assumed to contain the scale, as well as
+        other kwargs of `cartopy.feature.NaturalEarthFeature`.
+    """
     if isinstance(coast, str):
         feature = cartopy.feature.NaturalEarthFeature(name='coastline',
                                                       category='physical',
