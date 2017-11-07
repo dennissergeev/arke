@@ -6,6 +6,7 @@ import copy
 from functools import reduce
 import iris
 from iris.fileformats.pp import EARTH_RADIUS
+from iris.analysis.cartography import rotate_winds
 import numpy as np
 import operator
 import scipy.interpolate as scinter
@@ -14,6 +15,22 @@ from . import io, coords
 
 
 def nearest_xy_grid_2d_index(cube, point_lon, point_lat):
+    """
+    Find index-pair nearest to the given longitude an latitude
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        iris cube
+    point_lon: float
+        longitude of the point
+    point_lat: float
+        latitude of the point
+    Returns
+    -------
+    (int, int)
+        a pair of indices
+    """
     lons, lats = unrotate_xy_grids(cube)
     dist = np.sqrt((lons - point_lon)**2 + (lats - point_lat)**2)
     iy, ix = np.unravel_index(np.argmin(dist), lons.shape)
@@ -24,6 +41,34 @@ def nearest_xy_grid_2d_index(cube, point_lon, point_lat):
 def mask_cube_outside_circle_xy(cube, radius, point_lon, point_lat,
                                 dx=1, dy=None,
                                 return_copy=True, return_mask=True):
+    """
+    Mask a cube outside a circle
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        iris cube
+    radius: float
+        radius around `point_lon` and `point_lat`
+    point_lon: float
+        longitude of the point
+    point_lat: float
+        latitude of the point
+    dx: float, optional (default 1)
+        grid spacing of the `cube`'s x-axis
+        should be in the same units as radius
+    dy: float, optional (default =dx)
+        grid spacing in along y-axis
+    return_copy: bool (default True)
+        if True, return a masked copy of the given cube,
+        otherwise mask the given cube
+    return_mask: bool (default True)
+        if True, return the mask too
+    Returns
+    -------
+    iris.cube.Cube
+        (if return_copy=True) masked cube
+    """
     dy = dx if dy is None else dy
     iy, ix = nearest_xy_grid_2d_index(cube, point_lon, point_lat)
     xcoord, _ = iris.analysis.cartography.get_xy_grids(cube)
@@ -59,15 +104,18 @@ def unrotate_xy_grids(cube):
     using X and Y coordinate for a given cube.
     Unites get_xy_grids() and unrotate_pole() functions.
 
-    Args:
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        The cube with rotated coordinate system
+        for which to generate 2D X and Y unrotated coordinates.
+    Returns
+    -------
+    tuple of 2 numpy arrays (x, y)
 
-        * cube - The cube with rotated coordinate system
-                 for which to generate 2D X and Y unrotated coordinates.
-
-    Example::
-
-        lon, lat = unrotate_xy_grids(cube)
-
+    Example
+    -------
+    x, y = unrotate_xy_grids(cube)
     """
     x, y = iris.analysis.cartography.get_xy_grids(cube)
 
@@ -89,15 +137,18 @@ def unrotate_lonlat_grids(cube):
     using lon and lat coordinate for a given cube.
     Based on _get_lat_lon_coords() and unrotate_pole() functions.
 
-    Args:
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        The cube with rotated coordinate system
+        for which to generate 2D X and Y unrotated coordinates.
+    Returns
+    -------
+    tuple of 2 numpy arrays (lons, lats)
 
-        * cube - The cube with rotated coordinate system
-                 for which to generate 2D X and Y unrotated coordinates.
-
-    Example::
-
-        lon, lat = unrotate_latlon_grids(cube)
-
+    Example
+    -------
+    lon, lat = unrotate_latlon_grids(cube)
     """
     y_coord, x_coord = iris.analysis.cartography._get_lat_lon_coords(cube)
     x = x_coord.points
@@ -125,9 +176,13 @@ def unrotate_lonlat_grids(cube):
 
 
 def unrotate_uv(u, v, target_cs=None, remove_aux_xy=True):
+    """
+    Rotate u- and v-winds to a given CS (Geog by default) and remove
+    auxiliary coordinates created automatically by `rotate_winds()` function
+    """
     if target_cs is None:
-        target_cs = iris.coord_systems.GeogCS(iris.fileformats.pp.EARTH_RADIUS)
-    uv = iris.analysis.cartography.rotate_winds(u, v, target_cs)
+        target_cs = iris.coord_systems.GeogCS(EARTH_RADIUS)
+    uv = rotate_winds(u, v, target_cs)
     if remove_aux_xy:
         [cube.remove_coord(i) for i in ('projection_x_coordinate',
                                         'projection_y_coordinate')
@@ -135,70 +190,71 @@ def unrotate_uv(u, v, target_cs=None, remove_aux_xy=True):
     return uv
 
 
-def unrotate_wind(cubelist,
-                  uwind_name='x_wind', vwind_name='y_wind',
-                  newcs=iris.coord_systems.GeogCS(EARTH_RADIUS),
-                  replace=False, verbose=0):
+# def unrotate_wind(cubelist,
+#                   uwind_name='x_wind', vwind_name='y_wind',
+#                   newcs=iris.coord_systems.GeogCS(EARTH_RADIUS),
+#                   replace=False, verbose=0):
+#
+#         u = io.get_cube(cubelist, uwind_name, lazy=False)
+#         v = io.get_cube(cubelist, vwind_name, lazy=False)
+#
+#         if u is not None or v is not None:
+#             oldcs = u.coord_system()
+#             if verbose > 1:
+#                 print('Rotating winds from {} to {}'.format(oldcs, newcs))
+#                 print()
+#             u_rot, v_rot = rotate_winds(u, v, newcs)
+#             if replace:
+#                 cubelist[cubelist.index(u)] = u_rot
+#                 cubelist[cubelist.index(v)] = v_rot
+#             else:
+#                 cubelist.append(u_rot)
+#                 cubelist.append(v_rot)
+#         else:
+#
+#             if io.get_cube(cubelist, 'transformed_x_wind',
+#                            lazy=False) is not None\
+#                 and io.get_cube(cubelist, 'transformed_y_wind',
+#                                 lazy=False) is not None:
+#                 print('transformed winds are in the file already')
+#             else:
+#                 print('u-wind or v-wind cubes not found. No winds rotating.')
 
-        u = io.get_cube(cubelist, uwind_name, lazy=False)
-        v = io.get_cube(cubelist, vwind_name, lazy=False)
 
-        if u is not None or v is not None:
-            oldcs = u.coord_system()
-            if verbose > 1:
-                print('Rotating winds from {} to {}'.format(oldcs, newcs))
-                print()
-            u_rot, v_rot = iris.analysis.cartography.rotate_winds(u, v, newcs)
-            if replace:
-                cubelist[cubelist.index(u)] = u_rot
-                cubelist[cubelist.index(v)] = v_rot
-            else:
-                cubelist.append(u_rot)
-                cubelist.append(v_rot)
-        else:
-
-            if io.get_cube(cubelist, 'transformed_x_wind',
-                           lazy=False) is not None\
-                and io.get_cube(cubelist, 'transformed_y_wind',
-                                lazy=False) is not None:
-                print('transformed winds are in the file already')
-            else:
-                print('u-wind or v-wind cubes not found. No winds rotating.')
-
-
-def interp_cubes_to_points(cubelist, cube_name_and_axes,
-                           verbose=0, extrapolation_mode='linear'):
-    """ """
-    scheme = iris.analysis.Linear(extrapolation_mode=extrapolation_mode)
-    src_cube = io.get_cube(cubelist, cube_name_and_axes['name'])
-    pnts = []
-    if 'dim_ave' in cube_name_and_axes:
-        for iax in cube_name_and_axes['dim_ave']:
-            iax_name = src_cube.coord(axis=iax).name()
-            iax_pnts = 0.5 * (src_cube.coord(axis=iax).points[1:] +
-                              src_cube.coord(axis=iax).points[:-1])
-            if all(iax_pnts > 180.0):
-                iax_pnts = iax_pnts - 360.0
-            pnts.append((iax_name, iax_pnts))
-
-    else:
-        for iax in 'xy':
-            iax_name = src_cube.coord(axis=iax).name()
-            iax_pnts = src_cube.coord(axis=iax).points
-            if all(iax_pnts > 180.0):
-                iax_pnts = iax_pnts - 360.0
-            pnts.append((iax_name, iax_pnts))
-
-    for k, icube in enumerate(cubelist):
-        new_cube = icube.interpolate(pnts, scheme=scheme)
-        if verbose > 1:
-            print('Interpolation of {} is completed.'.format(new_cube.name()))
-        cubelist[k] = new_cube
+# def interp_cubes_to_points(cubelist, cube_name_and_axes,
+#                            verbose=0, extrapolation_mode='linear'):
+#     """Interpolate cube to  """
+#     scheme = iris.analysis.Linear(extrapolation_mode=extrapolation_mode)
+#     src_cube = io.get_cube(cubelist, cube_name_and_axes['name'])
+#     pnts = []
+#     if 'dim_ave' in cube_name_and_axes:
+#         for iax in cube_name_and_axes['dim_ave']:
+#             iax_name = src_cube.coord(axis=iax).name()
+#             iax_pnts = 0.5 * (src_cube.coord(axis=iax).points[1:] +
+#                               src_cube.coord(axis=iax).points[:-1])
+#             if all(iax_pnts > 180.0):
+#                 iax_pnts = iax_pnts - 360.0
+#             pnts.append((iax_name, iax_pnts))
+#
+#     else:
+#         for iax in 'xy':
+#             iax_name = src_cube.coord(axis=iax).name()
+#             iax_pnts = src_cube.coord(axis=iax).points
+#             if all(iax_pnts > 180.0):
+#                 iax_pnts = iax_pnts - 360.0
+#             pnts.append((iax_name, iax_pnts))
+#
+#     for k, icube in enumerate(cubelist):
+#         new_cube = icube.interpolate(pnts, scheme=scheme)
+#         if verbose > 1:
+#             print('Interpolation of {} completed.'.format(new_cube.name()))
+#         cubelist[k] = new_cube
 
 
 def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
                         obs_time_convert=True, rot_ll=True, shift=None,
                         dims='tzyx', return_cube=False):
+    # TODO: deprecate or rewrite the function
     if isinstance(obs_coord, tuple):
         if len(dims) != len(obs_coord):
             _msg = 'Shape of the obs_coord does not equal to the dims keyword'
@@ -249,7 +305,7 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         try:
             nplon = ivar.coord_system().grid_north_pole_longitude
             nplat = ivar.coord_system().grid_north_pole_latitude
-        except:
+        except AttributeError:
             nplon = model_coords[-1].coord_system.grid_north_pole_longitude
             nplat = model_coords[-1].coord_system.grid_north_pole_latitude
         obs_coord_dict['x'],
