@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Calculate derivatives and other useful diagnostics of atmospheric flow
-
-Previously the core of pyveccalc package
 """
 import numpy as np
 from cached_property import cached_property
@@ -30,6 +28,24 @@ iscube_and_not_scalar = lambda x: (isinstance(x, Cube)  # NOQA
 
 
 def replace_dimcoord(cube, src_cube, axes='xy', return_copy=True):
+    """
+    Replace `dim_coords` of one cube with `dim_coords` of another
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        Cube that needs new dim_coords
+    src_cube: iris.cube.Cube
+        Cube-donor of dim_coords
+    axes: str
+        Coordinate axes to replace dim_coords
+    return_copy: bool (default True)
+        if True, replace dim_coords of a copy of the `cube`
+    Returns
+    -------
+    (if return_copy is True) iris.cube.Cube
+        copy of the given cube with new dim_coords
+    """
     if return_copy:
         cp_cube = cube.copy()
     for axis in axes:
@@ -49,6 +65,19 @@ def replace_dimcoord(cube, src_cube, axes='xy', return_copy=True):
 def prepare_cube_zcoord(cube, rm_z_bounds=True, rm_z_varname=True):
     """
     Pick physically meaningful coordinate instead of level indices
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        Cube that has a z-axis coordinate
+    rm_z_bounds: bool (default True)
+        Remove `bounds` attribute of a selected vertical coordinate
+    rm_z_varname: bool (default True)
+        Remove `var_name` attribute of a selected vertical coordinate
+    Returns
+    -------
+    iris.cube.Cube
+        Copy of the original cube with replaced z-axis `dim_coord`
     """
     res = cube.copy()
     z_ax_coords = res.coords(axis='z')
@@ -81,6 +110,27 @@ def prepare_cube_zcoord(cube, rm_z_bounds=True, rm_z_varname=True):
 
 
 def replace_lonlat_dimcoord_with_cart(cube, dx=1, dy=None, dxdy_units='m'):
+    """
+    Replace latitude- and longitude-like `dim_coords`
+    with points equally-spaced by `dx` grid step. Used to prepare output from
+    limited-area MetUM run.
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        Target cube
+    dx: float, optional (default 1)
+        grid spacing of the `cube`'s x-axis
+        should be in the same units as dy
+    dy: float, optional (default =dx)
+        grid spacing in along y-axis
+    dxdy_units: str (default 'm')
+        Units of grid spacings
+    Returns
+    -------
+    iris.cube.Cube
+        Copy of the original cube with cartesian x,y-coordinates
+    """
     res = cube.copy()
     if dy is None:
         dy = dx
@@ -108,6 +158,32 @@ def prepare_cube_on_model_levels(cube, lonlat2cart_kw={}, prep_zcoord_kw={},
                                  rm_surf_alt=True,
                                  rm_sigma=True,
                                  rm_aux_factories=True):
+    """
+    Prepare a cube for `AtmosFlow`:
+        * replace longitude and latitude coords with cartesian coordinates
+          (see `replace_lonlat_dimcoord_with_cart` for details)
+        * replace vertical dim_coord with a physically-meaningful one instead
+          of model levels (see `prepare_cube_zcoord` for details)
+
+    Parameters
+    ----------
+    cube: iris.cube.Cube
+        Target cube
+    lonlat2cart_kw: dict, optional
+        kwargs for `replace_lonlat_dimcoord_with_cart()`
+    prep_zcoord_kw: dict, optional
+        kwargs for `prepare_cube_zcoord()`
+    rm_surf_alt: bool (default True)
+        Remove `surface_altitude` coordinate
+    rm_sigma: bool (default True)
+        Remove `sigma` coordinate
+    rm_aux_factories: bool (default True)
+        Remove `aux_factories` of the cube
+    Returns
+    -------
+    iris.cube.Cube
+        Copy of the cube ready for building `AtmosFlow`
+    """
     res = cube.copy()
     if isinstance(lonlat2cart_kw, dict):
         res = replace_lonlat_dimcoord_with_cart(res, **lonlat2cart_kw)
@@ -125,6 +201,7 @@ def prepare_cube_on_model_levels(cube, lonlat2cart_kw={}, prep_zcoord_kw={},
 
 
 def clean_pressure_coord(cube):
+    """Convert pressure coordinate units to pascals and round the values"""
     try:
         pcoord = cube.coord('pressure')
         units2pa = pcoord.units.convert(1, 'Pa')
@@ -175,8 +252,53 @@ def cube_deriv(cube, coord):
 
 
 class AtmosFlow:
-    """Atmospheric Flow in Cartesian coords"""
+    """
+    Atmospheric Flow
+
+    Used to calculate meteorological parameters from the given cubes.
+    Derived quantities are stored as cached properties to save computational
+    time.
+
+    Calculating quantites that involve on horizontal derivatives are only
+    true if used in cartesian coordinates, e.g. on the output from a LAM model
+    with constant grid spacing. Use `prepare_cube_on_model_levels` to prepare
+    cubes for `AtmosFlow` on a cartesian grid.
+
+    Attributes
+    ----------
+    cubes: iris.cube.CubeList
+        list of cubes representing meteorological parameters
+    main_cubes: iris.cube.CubeList
+        list of non-scalar cubes
+    wind_cmpnt: iris.cube.CubeList
+        list of u,v,w-wind components
+    {x,y,z}coord: iris.coord.Coord
+        Coordinates in the respective dimensions
+    pres: iris.cube.Cube
+        Pressure created from a coordinate, if possible
+    lats: iris.cube.Cube
+        latitudes
+    fcor: iris.cube.Cube
+        Coriolis parameter (taken at 45N by default)
+    d{x,y}: iris.cube.Cube
+        Grid spacing (if cartesian=True)
+    """
     def __init__(self, cartesian=True, **kw_vars):
+        """
+        Parameters
+        ----------
+        cartesian: bool (default True)
+            Cartesian coord system flag
+        **kw_vars: dict of iris cubes
+            meteorological parameters
+
+        Examples
+        --------
+        Initialise an `AtmosFlow` object with 3 wind components
+        >>> AF = AtmosFlow(u=u_cart, v=v_cart, w=w_cart)
+        and calculate relative vorticity:
+        >>> rv = AF.rel_vort
+        """
         self.__dict__.update(kw_vars)
         self.cartesian = cartesian
 
@@ -207,7 +329,7 @@ class AtmosFlow:
         if not hasattr(self, 'lats'):
             try:
                 _, lats = grid.unrotate_lonlat_grids(thecube)
-            except:
+            except (ValueError, AttributeError):
                 lats = np.array([45.])
             self.lats = Cube(lats,
                              units='degrees',
@@ -224,7 +346,7 @@ class AtmosFlow:
 
             try:
                 _dx = thecube.attributes['um_res'].to_flt('m')
-            except:
+            except KeyError:
                 _dx = 1.
             self.dx = Cube(_dx, units='m')
             self.dy = Cube(_dx, units='m')
