@@ -6,6 +6,17 @@ import cf_units
 
 
 class GrdStep(object):
+    """
+    MetUM grid step
+
+    Attributes
+    ----------
+    key: str
+        Keyword used in MetUM's rose interface, e.g. km4p0
+    Methods
+    -------
+    to_str, to_flt
+    """
     def __init__(self, key):
         assert isinstance(key, str)
         self.key = key
@@ -24,4 +35,5 @@ class GrdStep(object):
 
 
 def convert_unit_str(str1, str2):
+    """ Convert units using cf_units library """
     return cf_units.Unit(str1).convert(1, cf_units.Unit(str2))

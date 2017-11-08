@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import configparser
 import os
 
 import iris
@@ -21,17 +20,16 @@ def stash_id_to_name(stash_id, path_to_stash=None, default_name='unknown'):
         path_to_stash = os.path.join(os.curdir, 'stash.csv')
         try:
             df = pd.read_csv(path_to_stash)
-        except:
+        except (FileNotFoundError, pd.errors.ParserError):
             print('File stash.csv not found')
             print('Trying to download it ...')
             try:
                 import urllib
                 f = urllib.request.URLopener()
                 f.retrieve(url, path_to_stash)
-            except:
+            except urllib.error.HTTPError:
                 print('Download failed')
                 print('Default name returned instead')
-
                 return default_name
 
     df = pd.read_csv(path_to_stash)
@@ -45,8 +43,10 @@ def stash_id_to_name(stash_id, path_to_stash=None, default_name='unknown'):
 
 
 def replace_unknown_names(dataset, default_name='unknown'):
-    """ Replace missing names within an `iris.cube.CubeList`
-        by using STASH attribute """
+    """
+    Replace (in place) missing names within an `iris.cube.CubeList`
+    using STASH code
+    """
     for ivar in dataset:
         if default_name in ivar.name().lower():
             try:
@@ -56,22 +56,22 @@ def replace_unknown_names(dataset, default_name='unknown'):
                 print('Unable to rename, STASH attribute is missing')
 
 
-def rename_cubes_from_stashmaster(cube, stashmaster_file,
-                                  parser=configparser.ConfigParser(),
-                                  add_help=True):
-    if cube.name().lower() == 'unknown':
-        stash = cube.attributes['STASH']
-        parser.read(stashmaster_file)
-        try:
-            section = parser['stashmaster:code({})'.format(stash.item)]
-            new_name = '_'.join(section['description'].split())
-            cube.rename(new_name)
-            if add_help:
-                try:
-                    cube.attributes['help'] = section['help'].\
-                                              replace('=', '').\
-                                              replace('\n', '')
-                except KeyError:
-                    pass
-        except KeyError:
-            pass
+# def rename_cubes_from_stashmaster(cube, stashmaster_file,
+#                                   parser=configparser.ConfigParser(),
+#                                   add_help=True):
+#     if cube.name().lower() == 'unknown':
+#         stash = cube.attributes['STASH']
+#         parser.read(stashmaster_file)
+#         try:
+#             section = parser['stashmaster:code({})'.format(stash.item)]
+#             new_name = '_'.join(section['description'].split())
+#             cube.rename(new_name)
+#             if add_help:
+#                 try:
+#                     cube.attributes['help'] = section['help'].\
+#                                               replace('=', '').\
+#                                               replace('\n', '')
+#                 except KeyError:
+#                     pass
+#         except KeyError:
+#             pass
