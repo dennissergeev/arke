@@ -8,6 +8,23 @@ from .coords import REDUNDANT_COORDS
 
 
 def extract_as_single_cube(cubelist, constraints):
+    """
+    Extract cube from a cubelist as a single cube
+
+    If concatenation does not produce a single cube, try removing
+    'redundant' coordinates first
+
+    Parameters
+    ----------
+    cubelist: iris.cube.CubeList
+        List of cubes
+    constraints: iris.Constraint
+        Constraint(s) used to extract cubes
+    Returns
+    -------
+    iris.cube.Cube
+        a single cube
+    """
     try:
         cube = cubelist.extract(constraints, strict=True)
     except iris.exceptions.ConstraintMismatchError:
@@ -52,13 +69,13 @@ def clean_call(cube, field, filename):
     try:
         for factory in cube.aux_factories:
             cube.remove_aux_factory(factory)
-    except:
+    except iris.exceptions.CoordinateNotFoundError:
         pass
     try:
         cube.remove_coord(cube.coord('altitude'))
-    except:
+    except iris.exceptions.CoordinateNotFoundError:
         pass
     try:
         cube.remove_coord(cube.coord('surface_altitude'))
-    except:
+    except iris.exceptions.CoordinateNotFoundError:
         pass

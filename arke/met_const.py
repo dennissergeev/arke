@@ -10,7 +10,7 @@ import metpy.units as metunits
 
 namespace = locals()
 
-OPT_LEN = 7  # optimal-enough length of unit name
+OPT_LEN = 7  # optimal-ish length of unit name
 
 quants = {k: v for k, v in metconst.__dict__.items()
           if isinstance(v, metunits.units.Quantity)}

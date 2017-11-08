@@ -14,6 +14,15 @@ import numpy as np
 
 
 def cubehandler(f):
+    """
+    Wrap a function from metpy.calc submodule to pass iris cubes as arguments
+    and get cubes as output.
+
+    Copies coordinates from the first cube among the arguments.
+    Only copies `dim_coords` and `aux_coords`.
+
+    May not work with some units.
+    """
     @wraps(f)
     def wrapper(*args, **kwds):
         nargs = []
