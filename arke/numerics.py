@@ -734,6 +734,7 @@ class AtmosFlow:
             mixr = mcalc.specific_humidity_to_mixing_ratio(spechum)
             e = mcalc.vapor_pressure(p, mixr)
             dew = mcalc.dewpoint(e)
+            dew.convert_units('K')
             th = mcalc.equivalent_potential_temperature(p, temp, dew)
             th.rename('equivalent_potential_temperature')
             th.convert_units('K')
