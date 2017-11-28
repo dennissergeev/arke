@@ -36,12 +36,14 @@ def cubehandler(f):
                 un = None
                 for ut_format in set(cf_units.UT_FORMATS):
                     try:
-                        un = str(metunits.units(arg.units.format(ut_format)))
+                        un = metunits.units(arg.units.format(ut_format))
                     except Exception:
                         pass
                 if un is None:
                     raise metunits.UndefinedUnitError('Unable to convert cube'
                                                       'units to pint units')
+                elif isinstance(un, (int, float)):
+                    un *= metunits.units('dimensionless')
                 if np.ma.is_masked(arg.data):
                     q = metunits.masked_array(arg.data, data_units=un)
                 else:
