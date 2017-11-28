@@ -135,8 +135,10 @@ def specific_humidity_to_mixing_ratio(specific_humidity):
         Mixing ratio (kg/kg)
     """
     spechum = specific_humidity.copy()
-    spechum.convert_units(1)
+    spechum.convert_units('kg/kg')
     mixr = spechum / ((spechum)*(-1) + 1)
+    mixr.rename('mixing_ratio')
+    mixr.convert_units('kg/kg')
     return mixr
 
 

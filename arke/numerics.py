@@ -702,6 +702,22 @@ class AtmosFlow:
         return t
 
     @cached_property
+    def mixr(self):
+        r"""
+        Water vapour mixing ratio
+
+        """
+        try:
+            mixr = self.cubes.extract_strict('mixing_ratio')
+        except iris.exceptions.ConstraintMismatchError:
+            p = self.cubes.extract_strict('air_pressure')
+            temp = self.cubes.extract_strict('air_temperature')
+            spechum = self.cubes.extract_strict('specific_humidity')
+            mixr = mcalc.specific_to_mixing_ratio(spechum)
+            self.cubes.append(mixr)
+        return mixr
+
+    @cached_property
     def thetae(self):
         r"""
         Equivalent potential temperature
@@ -715,7 +731,7 @@ class AtmosFlow:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
             spechum = self.cubes.extract_strict('specific_humidity')
-            mixr = spechum / ((spechum)*(-1) + 1)
+            mixr = mcalc.specific_to_mixing_ratio(spechum)
             e = mcalc.vapor_pressure(p, mixr)
             dew = mcalc.dewpoint(e)
             th = mcalc.equivalent_potential_temperature(p, temp, dew)
