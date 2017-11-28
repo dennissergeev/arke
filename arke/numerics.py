@@ -713,7 +713,7 @@ class AtmosFlow:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
             spechum = self.cubes.extract_strict('specific_humidity')
-            mixr = mcalc.specific_to_mixing_ratio(spechum)
+            mixr = mcalc.specific_humidity_to_mixing_ratio(spechum)
             self.cubes.append(mixr)
         return mixr
 
@@ -731,7 +731,7 @@ class AtmosFlow:
             p = self.cubes.extract_strict('air_pressure')
             temp = self.cubes.extract_strict('air_temperature')
             spechum = self.cubes.extract_strict('specific_humidity')
-            mixr = mcalc.specific_to_mixing_ratio(spechum)
+            mixr = mcalc.specific_humidity_to_mixing_ratio(spechum)
             e = mcalc.vapor_pressure(p, mixr)
             dew = mcalc.dewpoint(e)
             th = mcalc.equivalent_potential_temperature(p, temp, dew)
