@@ -31,6 +31,7 @@ for k, v in quants.items():
 for k, v in nonrepeated.items():
     if v.units.dimensionless:
         un = 1
+        v = v.to_base_units()
     else:
         un = v.units.__str__().replace(' ** ', '^').replace(' * ', ' ')
     if counts[k] == 1:
