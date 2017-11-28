@@ -81,8 +81,8 @@ def get_model_real_coords(cube, dims='tzyx', subtract360=True):
         if len(idim) > 1:
             for icoord in idim:
                 if icoord.name() in PHYS_COORDS[iax]:
-                    if iax in 'xy' and all(icoord.points > 180.0)
-                      and subtract360:
+                    if (iax in 'xy' and all(icoord.points > 180.0)
+                       and subtract360):
                         icoord.points = icoord.points - 360.0
                     model_coords.append(icoord)
         elif len(idim) == 1:
