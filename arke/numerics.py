@@ -14,6 +14,7 @@ from . import met_calc as mcalc
 from . import met_const as mconst
 from . import grid
 from . import coords
+from .exceptions import BadCoordinateError
 
 phys_coord = ('height', 'level_height',
               'atmosphere_hybrid_height_coordinate',
@@ -91,7 +92,8 @@ def prepare_cube_zcoord(cube, rm_z_bounds=True, rm_z_varname=True):
                              phys=', '.join(phys_coord)))
         zcoord = suitable_z[0]
     else:
-        raise ValueError('No suitable coords among: {z}'.format(z=z_ax_coords))
+        raise BadCoordinateError('No suitable coords among: {z}'
+                                 .format(z=z_ax_coords))
 
     if rm_z_bounds:
         zcoord.bounds = None
@@ -221,16 +223,18 @@ def check_coords(cubes):
 
     bad_coords = coord_comparison['ungroupable_and_dimensioned']
     if bad_coords:
-        raise ValueError("Coordinates found in one cube that describe "
-                         "a data dimension which weren't in the other "
-                         "cube ({}), try removing this coordinate.".format(
-                             ', '.join(group.name() for group in bad_coords)))
+        raise BadCoordinateError("Coordinates found in one cube that describe "
+                                 "a data dimension which weren't in the other "
+                                 "cube ({}), try removing this coordinate."
+                                 .format(', '.join(group.name()
+                                                   for group in bad_coords)))
 
     bad_coords = coord_comparison['resamplable']
     if bad_coords:
-        raise ValueError('Some coordinates are different ({}), consider '
-                         'resampling.'.format(
-                             ', '.join(group.name() for group in bad_coords)))
+        raise BadCoordinateError('Some coordinates are different ({}), '
+                                 'consider resampling.'
+                                 .format(', '.join(group.name()
+                                                   for group in bad_coords)))
 
 
 def cube_deriv(cube, coord):
@@ -710,8 +714,6 @@ class AtmosFlow:
         try:
             mixr = self.cubes.extract_strict('mixing_ratio')
         except iris.exceptions.ConstraintMismatchError:
-            p = self.cubes.extract_strict('air_pressure')
-            temp = self.cubes.extract_strict('air_temperature')
             spechum = self.cubes.extract_strict('specific_humidity')
             mixr = mcalc.specific_humidity_to_mixing_ratio(spechum)
             self.cubes.append(mixr)

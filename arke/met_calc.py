@@ -12,6 +12,8 @@ from metpy import calc
 import metpy.units as metunits
 import numpy as np
 
+from .exceptions import NotYetImplementedError, UndefinedMetUnitError
+
 
 def cubehandler(f):
     """
@@ -40,8 +42,8 @@ def cubehandler(f):
                     except Exception:
                         pass
                 if un is None:
-                    raise metunits.UndefinedUnitError('Unable to convert cube'
-                                                      'units to pint units')
+                    raise UndefinedMetUnitError('Unable to convert cube'
+                                                'units to pint units')
                 elif isinstance(un, (int, float)):
                     un *= metunits.units('dimensionless')
                 if np.ma.is_masked(arg.data):
@@ -110,7 +112,7 @@ def cape_and_cin(pressure, temperature, specific_humidity):
     if any([i.ndim != 1 for i in (pressure,
                                   temperature,
                                   specific_humidity)]):
-        raise NotImplementedError('input cubes should be 1D')
+        raise NotYetImplementedError('input cubes should be 1D')
     if pressure.data[0] < pressure.data[-1]:
         # reverse arrays
         zdir = slice(None, None, -1)

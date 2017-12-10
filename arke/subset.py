@@ -9,6 +9,7 @@ import numpy as np
 
 from .grid import (nearest_xy_grid_2d_index,
                    mask_cube_outside_circle_xy)
+from .exceptions import NotYetImplementedError
 
 
 def slice_cubelist(cubelist, coord_name, coord_values):
@@ -89,7 +90,7 @@ def subset_cubelist(cubelist, h_subset):
             # xslice = yslice = slice(None)
             cl.append(mc)
         else:
-            raise NotImplementedError()
+            raise NotYetImplementedError()
 
     return cl
 
@@ -138,7 +139,7 @@ def extract_vert_section(cube, pnts):
         else:
             _msg = (f'Only 2 point pairs is allowed for grid indices option'
                     ',\n{pnts} are given')
-            raise NotImplementedError(_msg)
+            raise NotYetImplementedError(_msg)
     elif 'lon' in pnts and 'lat' in pnts:
         # Lon / lat coordinates
         cs = cube.coord_system()
@@ -208,9 +209,10 @@ def extract_vert_section(cube, pnts):
                 sect_info = {}  # TODO
             else:
                 # Diagonal
-                raise NotImplementedError()
+                raise NotYetImplementedError()
         else:
-            raise NotImplementedError(f"Can't deal with {cube.coord_system()}")
+            raise NotYetImplementedError(f"Can't deal with "
+                                          "{cube.coord_system()}")
 
     sect.attributes['sect_info'] = sect_info
     sect.attributes['sect_info']['pnts'] = pnts

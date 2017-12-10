@@ -5,6 +5,7 @@ I/O functions
 import iris
 
 from .coords import REDUNDANT_COORDS
+from .exceptions import CubeConcatenateError, CubeNotFoundError
 
 
 def extract_as_single_cube(cubelist, constraints):
@@ -44,7 +45,7 @@ def extract_as_single_cube(cubelist, constraints):
                     break
         if cube is None:
             _msg = 'Unable to concatenate {}'.format(cubes)
-            raise iris.exceptions.ConcatenateError([_msg])
+            raise CubeConcatenateError([_msg])
     return cube
 
 
@@ -61,7 +62,7 @@ def get_cube(cubelist, cube_name, lazy=True):
             return i
     if i is None:
         _msg = 'Cube with name {0} not found in {1}'
-        raise ValueError(_msg.format(cube_name, cubelist))
+        raise CubeNotFoundError(_msg.format(cube_name, cubelist))
 
 
 def clean_call(cube, field, filename):

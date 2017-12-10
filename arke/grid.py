@@ -12,6 +12,7 @@ import operator
 import scipy.interpolate as scinter
 
 from . import io, coords
+from .exceptions import ArgumentError, CoordinateRankError
 
 
 def nearest_xy_grid_2d_index(cube, point_lon, point_lat):
@@ -161,7 +162,7 @@ def unrotate_lonlat_grids(cube):
         # They are already in the correct shape.
         pass
     else:
-        raise ValueError("Expected 1D or 2D XY coords")
+        raise CoordinateRankError("Expected 1D or 2D XY coords")
 
     cs = cube.coord_system('CoordSystem')
     if isinstance(cs, iris.coord_systems.RotatedGeogCS):
@@ -258,7 +259,7 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     if isinstance(obs_coord, tuple):
         if len(dims) != len(obs_coord):
             _msg = 'Shape of the obs_coord does not equal to the dims keyword'
-            raise ValueError(_msg)
+            raise CoordinateRankError(_msg)
         else:
             obs_coord_dict = dict()
             for iax, i_coord in zip(dims, obs_coord):
@@ -266,7 +267,7 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
     elif isinstance(obs_coord, dict):
         obs_coord_dict = copy.deepcopy(obs_coord)
     else:
-        raise ValueError('obs_coord can only be a tuple or a dict')
+        raise ArgumentError('obs_coord can only be a tuple or a dict')
 
     # print(np.nanmin(obs_coord_dict['x']),np.nanmax(obs_coord_dict['x']))
     # print(np.nanmin(obs_coord_dict['y']),np.nanmax(obs_coord_dict['y']))
@@ -287,11 +288,11 @@ def regrid_model_to_obs(datacontainer, obs_coord, model_coords=None,
         if model_coords is None or not rot_ll:
             _msg = 'Model coords must be passed explicitly'\
                    ' if the input data is numpy.ndarray'
-            raise ValueError(_msg)
+            raise ArgumentError(_msg)
         else:
             ivar = datacontainer
     else:
-        raise ValueError('Unrecognized input data type')
+        raise ArgumentError('Unrecognized input data type')
     if model_coords is None:
         model_coords = coords.get_model_real_coords(ivar, dims=dims)
     model_coord_points = [i.points for i in model_coords]
