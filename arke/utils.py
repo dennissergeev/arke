@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-
 import iris
-
-iris.FUTURE.netcdf_no_unlimited = True
 
 
 def stash_id_to_name(stash_id, path_to_stash=None, default_name='unknown'):
