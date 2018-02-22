@@ -136,7 +136,7 @@ def unrotate_lonlat_grids(cube):
     """
     Convert rotated-pole lons and lats to unrotated ones
     using lon and lat coordinate for a given cube.
-    Based on _get_lat_lon_coords() and unrotate_pole() functions.
+    Based on _get_lon_lat_coords() and unrotate_pole() functions.
 
     Parameters
     ----------
@@ -151,7 +151,7 @@ def unrotate_lonlat_grids(cube):
     -------
     lon, lat = unrotate_latlon_grids(cube)
     """
-    y_coord, x_coord = iris.analysis.cartography._get_lat_lon_coords(cube)
+    x_coord, y_coord = iris.analysis.cartography._get_lon_lat_coords(cube)
     x = x_coord.points
     y = y_coord.points
 
