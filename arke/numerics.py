@@ -247,7 +247,7 @@ def cube_deriv(cube, coord):
     kw = dict(dim_coords=True)
     if (res.coord(axis='x', **kw) != cube.coord(axis='x', **kw) or
        res.coord(axis='y', **kw) != cube.coord(axis='y', **kw)):
-        res = res.regridded(cube)
+        res = res.regrid(cube, iris.analysis.Linear())
     elif res.coord(axis='z', **kw) != cube.coord(axis='z', **kw):
         cube_z_points = [(cube.coord(axis='z').name(),
                           cube.coord(axis='z').points)]
