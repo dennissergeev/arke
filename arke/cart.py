@@ -356,9 +356,10 @@ def merc_map_grid(fig, nrows_ncols, extent=None,
         add_coastline(ax, coast)
 
         if ticks is not None:
-            ax.gridlines(xlocs=xticks, ylocs=yticks, draw_labels=True)
-            ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
-            ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
+            gl = ax.gridlines(xlocs=xticks, ylocs=yticks, draw_labels=True)
+            gl.xlabels_top = gl.ylabels_right = False
+            gl.xformatter = LONGITUDE_FORMATTER
+            gl.yformatter = LATITUDE_FORMATTER
 
     return axgr
 
