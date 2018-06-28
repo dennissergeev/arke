@@ -320,6 +320,49 @@ def lcc_map_grid(fig, nrows_ncols, clon, clat, extent=None,
     return axgr
 
 
+def merc_map_grid(fig, nrows_ncols, extent=None,
+                  coast=None, ticks=None, **axesgrid_kw):
+    """
+    Build an `AxesGrid` instance with a grid `nrows_ncols` with
+    the Mercator projection and `**axesgrid_kw` parameters
+
+    Parameters
+    ----------
+    fig: matplotlib.figure.Figure
+        parent figure
+    nrows_ncols: tuple of int
+        N rows and N cols
+    coast: str or dict, optional
+        parameters to draw a coastline, see `add_coastline()` for details
+    extent: sequence, optional
+        extent (x0, x1, y0, y1) of the map in the given coordinate projection
+    ticks: sequence, optional
+        see `get_xy_ticks()` for details
+    axesgrid_kw: dict, optional
+        AxesGrid class keywords
+    Returns
+    -------
+    GeoAxesGrid
+    """
+    proj = ccrs.Mercator()
+    axgr = GeoAxesGrid(fig, 111, nrows_ncols, projection=proj, **axesgrid_kw)
+    if ticks is not None:
+        xticks, yticks = get_xy_ticks(ticks)
+
+    for ax in axgr:
+        if isinstance(extent, list):
+            ax.set_extent(extent, crs=ccrs.PlateCarree())
+
+        add_coastline(ax, coast)
+
+        if ticks is not None:
+            ax.gridlines(xlocs=xticks, ylocs=yticks)
+            ax.xaxis.set_major_formatter(LONGITUDE_FORMATTER)
+            ax.yaxis.set_major_formatter(LATITUDE_FORMATTER)
+
+    return axgr
+
+
 def add_coastline(ax, coast):
     """
     Add coast outline to a given GeoAxes
